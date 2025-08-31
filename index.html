@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Crazy Dodging Game</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+      color: white;
+      text-align: center;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      background: #111;
+      display: block;
+      margin: auto;
+    }
+    #controls {
+      margin-top: 10px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 8px;
+      border: none;
+      background: purple;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <h1>Crazy Dodging Game 🤪</h1>
+  <canvas id="gameCanvas" width="400" height="500"></canvas>
+  <div id="controls">
+    <button onclick="pauseGame()">⏸ Pause</button>
+    <button onclick="resumeGame()">▶ Resume</button>
+    <button onclick="restartGame()">🔁 Retry</button>
+  </div>
+  <p>Score: <span id="score">0</span> | High Score: <span id="highScore">0</span></p>
+  
+  <audio id="bgMusic" loop>
+    <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+  </audio>
+  <audio id="gameOverSound">
+    <source src="https://www.soundjay.com/button/sounds/beep-07.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const scoreDisplay = document.getElementById("score");
+    const highScoreDisplay = document.getElementById("highScore");
+    const bgMusic = document.getElementById("bgMusic");
+    const gameOverSound = document.getElementById("gameOverSound");
+
+    let player = { x: 180, y: 450, width: 40, height: 40, speed: 20 };
+    let blocks = [];
+    let score = 0;
+    let highScore = localStorage.getItem("crazyHighScore") || 0;
+    let gameOver = false;
+    let paused = false;
+
+    highScoreDisplay.textContent = highScore;
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft" && player.x > 0) player.x -= player.speed;
+      if (e.key === "ArrowRight" && player.x < canvas.width - player.width) player.x += player.speed;
+    });
+
+    function drawPlayer() {
+      ctx.fillStyle = "lime";
+      ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
+
+    function drawBlocks() {
+      ctx.fillStyle = "red";
+      blocks.forEach(block => {
+        ctx.fillRect(block.x, block.y, block.size, block.size);
+      });
+    }
+
+    function updateBlocks() {
+      if (Math.random() < 0.05) {
+        blocks.push({ x: Math.random() * 360, y: 0, size: 40 });
+      }
+      blocks.forEach(block => {
+        block.y += 5;
+        if (block.y > canvas.height) {
+          blocks.splice(blocks.indexOf(block), 1);
+          score++;
+        }
+      });
+    }
+
+    function checkCollision() {
+      blocks.forEach(block => {
+        if (
+          player.x < block.x + block.size &&
+          player.x + player.width > block.x &&
+          player.y < block.y + block.size &&
+          player.y + player.height > block.y
+        ) {
+          gameOver = true;
+          bgMusic.pause();
+          gameOverSound.play();
+          if (score > highScore) {
+            highScore = score;
+            localStorage.setItem("crazyHighScore", highScore);
+          }
+        }
+      });
+    }
+
+    function drawScore() {
+      scoreDisplay.textContent = score;
+      highScoreDisplay.textContent = highScore;
+    }
+
+    function gameLoop() {
+      if (paused || gameOver) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPlayer();
+      drawBlocks();
+      updateBlocks();
+      checkCollision();
+      drawScore();
+      requestAnimationFrame(gameLoop);
+    }
+
+    function restartGame() {
+      player.x = 180;
+      blocks = [];
+      score = 0;
+      gameOver = false;
+      bgMusic.currentTime = 0;
+      bgMusic.play();
+      gameLoop();
+    }
+
+    function pauseGame() {
+      paused = true;
+      bgMusic.pause();
+    }
+
+    function resumeGame() {
+      if (!gameOver) {
+        paused = false;
+        bgMusic.play();
+        gameLoop();
+      }
+    }
+
+    restartGame(); // start game on load
+  </script>
+</body>
+</html>
