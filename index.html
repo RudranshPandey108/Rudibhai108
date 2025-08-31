@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Crazy Catch Game</title>
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(to bottom, #1e3c72, #2a5298);
+      overflow: hidden;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    #gameCanvas {
+      display: block;
+      margin: 20px auto;
+      background: black;
+      border: 3px solid white;
+    }
+    #controls {
+      margin-top: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      margin: 5px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    #pauseBtn { background: orange; }
+    #retryBtn { background: red; color: white; display: none; }
+  </style>
+</head>
+<body>
+  <h1>🎮 Crazy Catch Game 🎮</h1>
+  <canvas id="gameCanvas" width="400" height="500"></canvas>
+  <div id="controls">
+    <button id="pauseBtn">⏸ Pause</button>
+    <button id="retryBtn">🔄 Retry</button>
+  </div>
+  <p id="scoreText">Score: 0 | High Score: 0</p>
+
+  <audio id="bgMusic" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop></audio>
+  <audio id="hitSound" src="https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg"></audio>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let player = { x: 180, y: 450, w: 40, h: 40, speed: 30 };
+    let objects = [];
+    let score = 0;
+    let highScore = localStorage.getItem("highScore") || 0;
+    let gameOver = false;
+    let paused = false;
+
+    const bgMusic = document.getElementById("bgMusic");
+    const hitSound = document.getElementById("hitSound");
+
+    document.getElementById("scoreText").innerText = `Score: 0 | High Score: ${highScore}`;
+
+    function drawPlayer() {
+      ctx.fillStyle = "lime";
+      ctx.fillRect(player.x, player.y, player.w, player.h);
+    }
+
+    function drawObjects() {
+      ctx.fillStyle = "red";
+      objects.forEach(o => ctx.fillRect(o.x, o.y, o.size, o.size));
+    }
+
+    function updateObjects() {
+      for (let i = 0; i < objects.length; i++) {
+        objects[i].y += 4;
+        if (objects[i].y > canvas.height) {
+          objects.splice(i, 1);
+          i--;
+          score++;
+          if (score > highScore) {
+            highScore = score;
+            localStorage.setItem("highScore", highScore);
+          }
+        }
+      }
+    }
+
+    function checkCollision() {
+      for (let o of objects) {
+        if (
+          player.x < o.x + o.size &&
+          player.x + player.w > o.x &&
+          player.y < o.y + o.size &&
+          player.y + player.h > o.y
+        ) {
+          gameOver = true;
+          hitSound.play();
+          document.getElementById("retryBtn").style.display = "inline-block";
+        }
+      }
+    }
+
+    function gameLoop() {
+      if (paused || gameOver) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPlayer();
+      drawObjects();
+      updateObjects();
+      checkCollision();
+      document.getElementById("scoreText").innerText = `Score: ${score} | High Score: ${highScore}`;
+      requestAnimationFrame(gameLoop);
+    }
+
+    function spawnObject() {
+      if (!paused && !gameOver) {
+        let size = 20;
+        let x = Math.random() * (canvas.width - size);
+        objects.push({ x, y: 0, size });
+      }
+    }
+
+    document.addEventListener("keydown", e => {
+      if (e.key === "ArrowLeft" && player.x > 0) player.x -= player.speed;
+      if (e.key === "ArrowRight" && player.x < canvas.width - player.w) player.x += player.speed;
+    });
+
+    document.getElementById("pauseBtn").addEventListener("click", () => {
+      paused = !paused;
+      if (!paused && !gameOver) gameLoop();
+      document.getElementById("pauseBtn").innerText = paused ? "▶ Resume" : "⏸ Pause";
+    });
+
+    document.getElementById("retryBtn").addEventListener("click", () => {
+      objects = [];
+      score = 0;
+      player.x = 180;
+      gameOver = false;
+      document.getElementById("retryBtn").style.display = "none";
+      gameLoop();
+    });
+
+    bgMusic.play();
+
+    setInterval(spawnObject, 1000);
+    gameLoop();
+  </script>
+</body>
+</html>
