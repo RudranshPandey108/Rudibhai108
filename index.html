@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Horror Maze Game</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: "Courier New", monospace;
+      text-align: center;
+    }
+    canvas {
+      background: #111;
+      display: block;
+      margin: 20px auto;
+      border: 3px solid red;
+      box-shadow: 0 0 20px red;
+    }
+    #overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      display: none;
+      background: rgba(0,0,0,0.9);
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      color: red;
+      font-size: 2rem;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1.2rem;
+      background: red;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>😱 Horror Maze 😱</h1>
+  <canvas id="gameCanvas" width="500" height="400"></canvas>
+  <div id="overlay">
+    <p id="message">Game Over!</p>
+    <button onclick="restartGame()">Retry</button>
+  </div>
+  
+  <audio id="bgMusic" loop autoplay>
+    <source src="https://cdn.pixabay.com/download/audio/2022/02/23/audio_8f27d5b1f4.mp3?filename=horror-background-112765.mp3" type="audio/mpeg">
+  </audio>
+  
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const overlay = document.getElementById("overlay");
+    const message = document.getElementById("message");
+    const music = document.getElementById("bgMusic");
+
+    let player = { x: 50, y: 180, size: 20, speed: 5 };
+    let monster = { x: 400, y: 200, size: 30, speed: 2, dx: 2, dy: 2 };
+    let gameOver = false;
+
+    document.addEventListener("keydown", movePlayer);
+
+    function movePlayer(e) {
+      if (gameOver) return;
+      if (e.key === "ArrowUp" && player.y > 0) player.y -= player.speed;
+      if (e.key === "ArrowDown" && player.y < canvas.height - player.size) player.y += player.speed;
+      if (e.key === "ArrowLeft" && player.x > 0) player.x -= player.speed;
+      if (e.key === "ArrowRight" && player.x < canvas.width - player.size) player.x += player.speed;
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = "white";
+      ctx.fillRect(player.x, player.y, player.size, player.size);
+    }
+
+    function drawMonster() {
+      ctx.fillStyle = "red";
+      ctx.fillRect(monster.x, monster.y, monster.size, monster.size);
+    }
+
+    function moveMonster() {
+      monster.x += monster.dx;
+      monster.y += monster.dy;
+      if (monster.x <= 0 || monster.x >= canvas.width - monster.size) monster.dx *= -1;
+      if (monster.y <= 0 || monster.y >= canvas.height - monster.size) monster.dy *= -1;
+    }
+
+    function checkCollision() {
+      if (
+        player.x < monster.x + monster.size &&
+        player.x + player.size > monster.x &&
+        player.y < monster.y + monster.size &&
+        player.y + player.size > monster.y
+      ) {
+        endGame();
+      }
+    }
+
+    function endGame() {
+      gameOver = true;
+      overlay.style.display = "flex";
+      message.innerText = "💀 You Died! 💀";
+    }
+
+    function restartGame() {
+      player = { x: 50, y: 180, size: 20, speed: 5 };
+      monster = { x: 400, y: 200, size: 30, speed: 2, dx: 2, dy: 2 };
+      gameOver = false;
+      overlay.style.display = "none";
+      requestAnimationFrame(update);
+    }
+
+    function update() {
+      if (gameOver) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPlayer();
+      drawMonster();
+      moveMonster();
+      checkCollision();
+      requestAnimationFrame(update);
+    }
+
+    music.volume = 0.3;
+    update();
+  </script>
+</body>
+</html>
