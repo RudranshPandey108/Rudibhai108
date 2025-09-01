@@ -73,7 +73,7 @@
           <button id="btnSend" class="smallbtn">Send</button>
         </div>
 
-        <div class="hint">Tip: Say <b>"Hey Siri"</b> to activate when wake-word is ON. Try: <em>open youtube, search weather Chennai, time, wiki Tesla, calculate 12*8, set timer 10 seconds,open spotify , open PW</em></div>
+        <div class="hint">Tip: Say <b>"Hey Jarvis"</b> to activate when wake-word is ON. Try: <em>open youtube, search weather Chennai, time, wiki Tesla, calculate 12*8, set timer 10 seconds</em></div>
 
         <div style="margin-top:12px">
           <strong>Quick commands</strong>
@@ -88,8 +88,6 @@
             <div class="cmd">set timer 15 seconds</div>
             <div class="cmd">play music</div>
             <div class="cmd">tell me a joke</div>
-            <div class="cmd">open spotify</div>
-            <div class="cmd">open PW</div>
           </div>
         </div>
       </div>
@@ -112,7 +110,7 @@
     </div>
 
     <footer>
-      Built for you — say hi and try commands. Owner Genius Rudransh Pandey  
+      Built for you — say hi and try commands. Deploy on GitHub Pages: push this file and enable Pages (branch: main).  
     </footer>
   </div>
 
@@ -159,7 +157,6 @@
     "Why did the developer go broke? Because he used up all his cache.",
     "Why do programmers prefer dark mode? Because the light attracts bugs.",
     "I told my computer I needed a break, and it said — 'No problem, I'll go to sleep.'"
-    "Noob ho tum .. haan tum dimag nhi hain  hushhhhh."
   ];
 
   // Helper: add to log
@@ -230,8 +227,8 @@
       log('Heard: ' + res);
       // If wake-word on, check for it first
       if(wakeWordOn){
-        if(res.toLowerCase().includes('hey siri') || res.toLowerCase().includes('ok siri')){
-          speak('Yes, I am listening'|| 'haan mein sunn rahi hun ');
+        if(res.toLowerCase().includes('hey jarvis') || res.toLowerCase().includes('ok jarvis')){
+          speak('Yes, I am listening');
           log('Wake word detected — ready for command');
           // start a short recognition for the next command (if not continuous)
           // If continuous: we are already listening
@@ -265,9 +262,9 @@
     const lower = text.toLowerCase();
 
     // 1. small talk
-    if(/^(hi|hello|hey|hey siri)\b/.test(lower)){
-      speak('Hello ' + (currentUserName() || '') + '. How can I help?.. mein aapki kya help kr skti hun');
-      addTranscriptEntry('Siri: greeting');
+    if(/^(hi|hello|hey|hey jarvis)\b/.test(lower)){
+      speak('Hello ' + (currentUserName() || '') + '. How can I help?');
+      addTranscriptEntry('Jarvis: greeting');
       return;
     }
 
@@ -276,28 +273,26 @@
       const now = new Date();
       const out = `It is ${now.toLocaleTimeString()}`;
       speak(out);
-      addTranscriptEntry('Siri: ' + out);
+      addTranscriptEntry('Jarvis: ' + out);
       return;
     }
     if(lower.includes('date')) {
       const now = new Date();
       const out = `Today is ${now.toLocaleDateString()}`;
       speak(out);
-      addTranscriptEntry('Siri: ' + out);
+      addTranscriptEntry('Jarvis: ' + out);
       return;
     }
 
     // 3. open website
-    if(lower.match(/\bopen (youtube|google|wikipedia|github|spotify|PW)\b/)) {
+    if(lower.match(/\bopen (youtube|google|wikipedia|github)\b/)) {
       let site = 'https://google.com';
       if(lower.includes('youtube')) site = 'https://youtube.com';
       else if(lower.includes('wikipedia')) site = 'https://wikipedia.org';
-        else if(lower.includes('spotify')) site = 'https://open.spotify.com';
-          else if(lower.includes('PW')) site = 'https://www.pw.live';
       else if(lower.includes('github')) site = 'https://github.com';
       speak('Opening ' + site.replace(/^https?:\/\//,''));
       window.open(site, '_blank');
-      addTranscriptEntry('Siri: opening ' + site);
+      addTranscriptEntry('Jarvis: opening ' + site);
       return;
     }
 
@@ -308,7 +303,7 @@
       speak('Searching Google for ' + q);
       const url = 'https://www.google.com/search?q=' + encodeURIComponent(q);
       window.open(url, '_blank');
-      addTranscriptEntry('Siri: searched for ' + q);
+      addTranscriptEntry('Jarvis: searched for ' + q);
       return;
     }
 
@@ -317,7 +312,7 @@
       const term = text.replace(/^(wiki|wikipedia)\s+/i,'').trim();
       if(!term){ speak('What do you want from Wikipedia?'); return; }
       speak('Searching Wikipedia for ' + term);
-      addTranscriptEntry('Siri: fetching wikipedia for ' + term);
+      addTranscriptEntry('Jarvis: fetching wikipedia for ' + term);
       try {
         const api = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(term);
         const r = await fetch(api);
@@ -370,7 +365,7 @@
     // 8. play music -> open YouTube playlist
     if(lower.includes('play music') || lower.includes('play song') || lower.includes('play some music')) {
       speak('Playing music');
-      window.open('https://open.spotify.com/track/56vKWfKrXliday1F6vPe7J', '_blank');
+      window.open('https://www.youtube.com/results?search_query=lofi+hip+hop+beats', '_blank');
       return;
     }
 
@@ -400,7 +395,7 @@
 
     // 12. help / list commands
     if(lower.includes('help') || lower.includes('commands')) {
-      const msg = 'You can say: time, date, open youtube,open spotify , open pw, search cats, wiki Tesla, calculate 12 plus 7, set timer 10 seconds, play music, tell me a joke';
+      const msg = 'You can say: time, date, open youtube, search cats, wiki Tesla, calculate 12 plus 7, set timer 10 seconds, play music, tell me a joke';
       speak(msg);
       addTranscriptEntry('Help shown');
       return;
