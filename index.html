@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Rudi-like Web Voice Assistant</title>
+<title>Siri-like Web Voice Assistant</title>
 <style>
   :root{
     --bg:#0f1720; --card:#0b1220; --muted:#94a3b8; --accent:#22c55e; --accent2:#60a5fa;
@@ -41,7 +41,7 @@
   <div class="wrap">
     <header>
       <div>
-        <h1>Rudi — Web Voice Assistant</h1>
+        <h1>Siri — Web Voice Assistant</h1>
         <div class="subtitle">Speak commands or type them. Works in Chrome/Edge. No server required.</div>
       </div>
       <div style="margin-left:auto;text-align:right">
@@ -73,7 +73,7 @@
           <button id="btnSend" class="smallbtn">Send</button>
         </div>
 
-        <div class="hint">Tip: Say <b>"Hey Rudi"</b> to activate when wake-word is ON. Try: <em>open youtube, search weather Chennai, time, wiki Tesla, calculate 12*8, set timer 10 seconds</em></div>
+        <div class="hint">Tip: Say <b>"Hey Siri"</b> to activate when wake-word is ON. Try: <em>open youtube, search weather Chennai, time, wiki Tesla, calculate 12*8, set timer 10 seconds</em></div>
 
         <div style="margin-top:12px">
           <strong>Quick commands</strong>
@@ -115,10 +115,19 @@
   </div>
 
 <script>
+/* -------------------------
+  Siri-like Web Voice Assistant
+  - Uses Web Speech API (SpeechRecognition & SpeechSynthesis)
+  - No backend required
+  - Commands handled locally (search, open, wiki, calculate, timer, jokes, music, etc.)
+  ------------------------- */
+
 (function(){
+  // Feature detection
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const synth = window.speechSynthesis;
 
+  // UI elements
   const btnStart = document.getElementById('btnStart');
   const btnStop = document.getElementById('btnStop');
   const btnWake = document.getElementById('btnWake');
@@ -135,6 +144,7 @@
   const chkContinuous = document.getElementById('chkContinuous');
   const wakeStateSpan = document.getElementById('wakeState');
 
+  // State
   let recognition = null;
   let listening = false;
   let wakeWordOn = false;
@@ -142,12 +152,14 @@
   let lang = 'en-US';
   let continuous = false;
 
+  // Jokes array
   const jokes = [
     "Why did the developer go broke? Because he used up all his cache.",
     "Why do programmers prefer dark mode? Because the light attracts bugs.",
     "I told my computer I needed a break, and it said — 'No problem, I'll go to sleep.'"
   ];
 
+  // Helper: add to log
   function log(message, type='info'){
     const time = new Date().toLocaleTimeString();
     const el = document.createElement('div');
@@ -155,8 +167,9 @@
     logEl.prepend(el);
   }
 
-  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
 
+  // Speak helper
   function speak(text, opts = {}){
     if(!chkVoice.checked) return;
     if(!synth) return;
@@ -165,13 +178,14 @@
       u.lang = opts.lang || lang;
       u.rate = opts.rate || 1.0;
       u.pitch = opts.pitch || 1.0;
-      synth.cancel();
+      synth.cancel(); // stop previous
       synth.speak(u);
     } catch (e) {
       console.error('synth error', e);
     }
   }
 
+  // Initialize recognition
   function setupRecognition(){
     if(!SpeechRecognition) {
       listenStatus.textContent = 'SpeechRecognition not supported';
@@ -181,7 +195,8 @@
     recognition = new SpeechRecognition();
     recognition.lang = lang;
     recognition.interimResults = false;
-    recognition.continuous = continuous;
+    recognition.continuous = continuous; // controlled by checkbox
+    recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
       listening = true;
@@ -194,7 +209,8 @@
       listening = false;
       listenStatus.textContent = 'Idle';
       btnStart.textContent = 'Start Listening';
-      log('Voice recognition stopped');
+      log('Voice recognition stopped', 'info');
+      // If continuous/chkContinuous is on, restart automatically
       if(chkContinuous.checked && recognition){
         setTimeout(()=> { try{ recognition.start() } catch(e){} }, 250);
       }
@@ -209,53 +225,66 @@
       lastTranscript = res;
       transcriptEl.textContent = 'Heard: "' + res + '"';
       log('Heard: ' + res);
+      // If wake-word on, check for it first
       if(wakeWordOn){
-        if(res.toLowerCase().includes('hey rudi') || res.toLowerCase().includes('ok rudi')){
+        if(res.toLowerCase().includes('hey siri') || res.toLowerCase().includes('ok siri')){
           speak('Yes, I am listening');
           log('Wake word detected — ready for command');
+          // start a short recognition for the next command (if not continuous)
+          // If continuous: we are already listening
           return;
         }
-        if(res.toLowerCase().startsWith('hey rudi')) {
-          const cmd = res.toLowerCase().replace(/^hey rudi[, ]*/,'').trim();
+        // If wake word is required and not present, ignore
+        // But be forgiving: if phrase contains wake word + command, strip it
+        if(res.toLowerCase().startsWith('hey siri')) {
+          const cmd = res.toLowerCase().replace(/^hey siri[, ]*/,'').trim();
           if(cmd) handleCommand(cmd);
           return;
         } else {
+          // Not wake word — ignore spoken phrase
           log('Ignored (wake-word on)', 'info');
           return;
         }
       } else {
+        // Not wake-word mode: directly handle command
         handleCommand(res);
       }
     };
   }
 
+  // Command handler
   async function handleCommand(textRaw){
     const text = textRaw.trim();
     if(!text) return;
+    // show in UI
     addTranscriptEntry('User: ' + text);
+    // Basic parsing
     const lower = text.toLowerCase();
 
-    if(/^(hi|hello|hey|hey rudi)\b/.test(lower)){
+    // 1. small talk
+    if(/^(hi|hello|hey|hey siri)\b/.test(lower)){
       speak('Hello ' + (currentUserName() || '') + '. How can I help?');
-      addTranscriptEntry('Rudi: greeting');
+      addTranscriptEntry('Siri: greeting');
       return;
     }
 
+    // 2. time/date
     if(lower.includes('time')) {
       const now = new Date();
       const out = `It is ${now.toLocaleTimeString()}`;
       speak(out);
-      addTranscriptEntry('Rudi: ' + out);
+      addTranscriptEntry('Siri: ' + out);
       return;
     }
     if(lower.includes('date')) {
       const now = new Date();
       const out = `Today is ${now.toLocaleDateString()}`;
       speak(out);
-      addTranscriptEntry('Rudi: ' + out);
+      addTranscriptEntry('Siri: ' + out);
       return;
     }
 
+    // 3. open website
     if(lower.match(/\bopen (youtube|google|wikipedia|github)\b/)) {
       let site = 'https://google.com';
       if(lower.includes('youtube')) site = 'https://youtube.com';
@@ -263,25 +292,27 @@
       else if(lower.includes('github')) site = 'https://github.com';
       speak('Opening ' + site.replace(/^https?:\/\//,''));
       window.open(site, '_blank');
-      addTranscriptEntry('Rudi: opening ' + site);
+      addTranscriptEntry('Siri: opening ' + site);
       return;
     }
 
+    // 4. search <query>
     if(lower.startsWith('search ') || lower.startsWith('google ')) {
       const q = text.replace(/^(search|google)\s+/i,'').trim();
       if(!q){ speak('What do you want me to search?'); return; }
       speak('Searching Google for ' + q);
       const url = 'https://www.google.com/search?q=' + encodeURIComponent(q);
       window.open(url, '_blank');
-      addTranscriptEntry('Rudi: searched for ' + q);
+      addTranscriptEntry('Siri: searched for ' + q);
       return;
     }
 
+    // 5. wiki <term> -> fetch first paragraph from Wikipedia
     if(lower.startsWith('wiki ') || lower.startsWith('wikipedia ')) {
       const term = text.replace(/^(wiki|wikipedia)\s+/i,'').trim();
       if(!term){ speak('What do you want from Wikipedia?'); return; }
       speak('Searching Wikipedia for ' + term);
-      addTranscriptEntry('Rudi: fetching wikipedia for ' + term);
+      addTranscriptEntry('Siri: fetching wikipedia for ' + term);
       try {
         const api = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(term);
         const r = await fetch(api);
@@ -297,10 +328,13 @@
       return;
     }
 
+    // 6. calculate <expr>
     if(lower.startsWith('calculate ') || lower.startsWith('what is ') || /^[0-9\+\-\*\/\. ]+$/.test(lower)) {
+      // window.eval is dangerous — limit to math chars
       const expr = text.replace(/^(calculate|what is)\s+/i,'').replace(/[^0-9+\-*/(). %]/g,'');
       if(!expr){ speak('I could not parse the expression'); return; }
       try {
+        // safe-ish eval using Function
         const val = Function('"use strict";return (' + expr + ')')();
         speak('The result is ' + val);
         addTranscriptEntry('Calc: ' + expr + ' = ' + val);
@@ -311,7 +345,9 @@
       return;
     }
 
+    // 7. set timer X seconds/minutes
     if(lower.startsWith('set timer') || lower.startsWith('timer ')) {
+      // parse number and unit
       const m = lower.match(/(\d+)\s*(seconds|second|minutes|minute|secs|mins)?/);
       if(!m){ speak('Please tell me the time in seconds or minutes'); return; }
       let num = parseInt(m[1],10);
@@ -326,12 +362,14 @@
       return;
     }
 
+    // 8. play music -> open YouTube playlist
     if(lower.includes('play music') || lower.includes('play song') || lower.includes('play some music')) {
       speak('Playing music');
       window.open('https://youtu.be/sUf2PtEZris?feature=shared', '_blank');
       return;
     }
 
+    // 9. jokes
     if(lower.includes('joke')) {
       const j = jokes[Math.floor(Math.random()*jokes.length)];
       speak(j);
@@ -339,6 +377,7 @@
       return;
     }
 
+    // 10. utility: open site <url>
     const openMatch = lower.match(/^open (https?:\/\/\S+|\S+\.\S{2,})$/);
     if(openMatch) {
       const target = openMatch[1].startsWith('http') ? openMatch[1] : 'https://' + openMatch[1];
@@ -347,15 +386,21 @@
       return;
     }
 
-    if(lower.includes('stop listening') || lower.includes('stop') || lower.includes('quit')) {
-      speak('Okay, I will stop listening now.');
-      if(recognition && listening){
-        try { recognition.stop(); } catch(e){}
-      }
+    // 11. stop / exit listening
+    if(lower.includes('stop listening') || lower.includes('stop') || lower.includes('exit')) {
+      speak('Stopping voice recognition');
+      stopListening();
       return;
     }
 
-    // ✅ Extra: Physics Wallah app / site
+    // 12. help / list commands
+    if(lower.includes('help') || lower.includes('commands')) {
+      const msg = 'You can say: time, date, open youtube, search cats, wiki Tesla, calculate 12 plus 7, set timer 10 seconds, play music, tell me a joke';
+      speak(msg);
+      addTranscriptEntry('Help shown');
+      return;
+    }
+// ✅ Extra: Physics Wallah app / site
     if(lower.includes("open pw") || lower.includes("physics wallah") || lower.includes("play pw")){
       speak("Opening Physics Wallah for you");
       // Try opening app via intent
@@ -366,59 +411,99 @@
       }, 1000);
       return;
     }
-
-    // Fallback if nothing matched
-    speak("Sorry, I did not understand that command.");
-    addTranscriptEntry("Rudi: command not recognized");
+    // fallback: ask to search
+    speak('I did not understand. Do you want me to search the web for ' + text + '?');
+    if(confirm('Search web for "' + text + '"?')) {
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(text), '_blank');
+    }
   }
 
-  function addTranscriptEntry(msg){
-    const el = document.createElement('div');
-    el.textContent = msg;
-    transcriptEl.appendChild(el);
+  // Add transcript entry area (left)
+  function addTranscriptEntry(txt, type='sys'){
+    const p = document.createElement('div');
+    p.style.marginTop = '8px';
+    p.style.fontSize = '14px';
+    p.style.color = (type==='err' ? '#ffb3b3' : '#dbeafe');
+    p.textContent = txt;
+    transcriptEl.appendChild(p);
+    // scroll transcript into view
     transcriptEl.scrollTop = transcriptEl.scrollHeight;
   }
 
-  function currentUserName(){
-    return "Rudransh";
-  }
-
-  // UI bindings
-  btnStart.onclick = ()=>{
+  // Controls events
+  btnStart.addEventListener('click', () => {
     if(!recognition) setupRecognition();
     if(recognition && !listening){
-      recognition.start();
+      try { recognition.start(); } catch(e){ console.warn(e); }
     }
-  };
-  btnStop.onclick = ()=>{
-    if(recognition && listening){ recognition.stop(); }
-  };
-  btnWake.onclick = ()=>{
-    wakeWordOn = !wakeWordOn;
-    wakeStateSpan.textContent = wakeWordOn ? "On" : "Off";
-    speak('Wake word ' + (wakeWordOn ? 'enabled' : 'disabled'));
-  };
-  btnToggleVoice.onclick = ()=> {
-    chkVoice.checked = !chkVoice.checked;
-    speak('Voice reply ' + (chkVoice.checked ? 'enabled' : 'disabled'));
-  };
-  btnClearLog.onclick = ()=>{ logEl.innerHTML=''; };
-  btnSend.onclick = ()=>{
-    const txt = cmdInput.value.trim();
-    if(txt){ handleCommand(txt); cmdInput.value=''; }
-  };
-  langSelect.onchange = ()=>{
-    lang = langSelect.value;
-    langLabel.textContent = langSelect.options[langSelect.selectedIndex].text;
-    if(recognition){ try{ recognition.stop(); } catch(e){} setupRecognition(); }
-  };
-  chkContinuous.onchange = ()=>{
-    continuous = chkContinuous.checked;
-    if(recognition){ try{ recognition.stop(); } catch(e){} setupRecognition(); }
-  };
+  });
+  btnStop.addEventListener('click', stopListening);
 
-  // Init
-  setupRecognition();
+  btnWake.addEventListener('click', ()=> {
+    wakeWordOn = !wakeWordOn;
+    wakeStateSpan.textContent = wakeWordOn ? 'On' : 'Off';
+    log('Wake-word ' + (wakeWordOn ? 'enabled' : 'disabled'));
+  });
+
+  btnToggleVoice.addEventListener('click', ()=> {
+    chkVoice.checked = !chkVoice.checked;
+    log('Voice reply ' + (chkVoice.checked ? 'enabled' : 'disabled'));
+  });
+
+  btnClearLog.addEventListener('click', ()=> { logEl.innerHTML=''; transcriptEl.innerHTML=''; });
+
+  chkContinuous.addEventListener('change', ()=>{
+    if(recognition){
+      recognition.stop();
+      recognition = null;
+      setupRecognition();
+    }
+    log('Continuous: ' + chkContinuous.checked);
+  });
+
+  langSelect.addEventListener('change', ()=> {
+    lang = langSelect.value;
+    langLabel.textContent = (lang==='hi-IN' ? 'Hindi (hi-IN)' : 'English (en-US)');
+    if(recognition){
+      recognition.lang = lang;
+    }
+    log('Language set to ' + lang);
+  });
+
+  btnSend.addEventListener('click', ()=> {
+    const text = cmdInput.value.trim();
+    if(!text) return;
+    handleCommand(text);
+    cmdInput.value='';
+  });
+
+  cmdInput.addEventListener('keydown', (e)=> { if(e.key==='Enter') btnSend.click(); });
+
+  function stopListening(){
+    if(recognition){
+      try { recognition.stop(); } catch(e){}
+      listening = false;
+      listenStatus.textContent = 'Idle';
+      log('Stopped listening');
+    }
+  }
+
+  // current user name (from input)
+  function currentUserName(){
+    const n = document.getElementById('username');
+    return n ? (n.value || '') : '';
+  }
+
+  // initial setup
+  function init(){
+    transcriptEl.textContent = 'Press Start Listening and speak. You can also type commands below.';
+    lang = langSelect.value;
+    // prepare recognition but don't start
+    setupRecognition();
+    log('Assistant ready');
+  }
+
+  init();
 
 })();
 </script>
