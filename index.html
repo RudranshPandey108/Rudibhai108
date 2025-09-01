@@ -64,7 +64,7 @@
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    let snake, food, dx, dy, score, gameInterval, isPaused, currentUser;
+    let snake, food, dx, dy, score, gameInterval, isPaused, currentUser, speed;
 
     function startGame() {
       const usernameInput = document.getElementById("username").value.trim();
@@ -85,8 +85,9 @@
       dx = 20; dy = 0;
       score = 0;
       isPaused = false;
+      speed = 250; // initial slower speed
       clearInterval(gameInterval);
-      gameInterval = setInterval(drawGame, 150);
+      gameInterval = setInterval(drawGame, speed);
     }
 
     function randomFood() {
@@ -109,6 +110,7 @@
       if (head.x === food.x && head.y === food.y) {
         score++;
         food = randomFood();
+        increaseSpeed();
       } else {
         snake.pop();
       }
@@ -136,6 +138,12 @@
       ctx.fillStyle = "white";
       ctx.font = "18px Arial";
       ctx.fillText("Score: " + score, 10, 20);
+    }
+
+    function increaseSpeed() {
+      clearInterval(gameInterval);
+      speed = Math.max(50, speed - 5); // gradually increase speed
+      gameInterval = setInterval(drawGame, speed);
     }
 
     function changeDirection(direction) {
@@ -172,12 +180,31 @@
       const scores = JSON.parse(localStorage.getItem("snakeScores")) || [];
       const scoresList = document.getElementById("scoresList");
       scoresList.innerHTML = "";
-      scores.forEach(s => {
+
+      scores.forEach((s, index) => {
         const li = document.createElement("li");
         li.textContent = `${s.user} - ${s.score}`;
+
+        // Admin feature: Rudra can remove other players
+        if (currentUser === "Rudra" && s.user !== "Rudra") {
+          const removeBtn = document.createElement("button");
+          removeBtn.textContent = "❌ Remove";
+          removeBtn.style.marginLeft = "10px";
+          removeBtn.onclick = () => removePlayer(index);
+          li.appendChild(removeBtn);
+        }
+
         scoresList.appendChild(li);
       });
+
       document.getElementById("leaderboard").style.display = "block";
+    }
+
+    function removePlayer(index) {
+      let scores = JSON.parse(localStorage.getItem("snakeScores")) || [];
+      scores.splice(index, 1);
+      localStorage.setItem("snakeScores", JSON.stringify(scores));
+      showLeaderboard();
     }
 
     function playAgain() {
