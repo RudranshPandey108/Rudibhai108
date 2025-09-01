@@ -1,196 +1,199 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Snake Game</title>
-<style>
-  canvas { background: #111; display: block; margin: 20px auto; border: 3px solid #333; }
-  #leaderboard { display: none; text-align: center; color: white; }
-  #controls { text-align: center; margin-top: 20px; }
-  button { margin: 5px; padding: 5px 10px; cursor: pointer; }
-  body { background: #222; color: white; font-family: Arial, sans-serif; }
-</style>
+    <title>Snake Game with Admin</title>
+    <style>
+        canvas {
+            border: 2px solid black;
+            background-color: #f0f0f0;
+        }
+        #controls button {
+            margin: 5px;
+            padding: 10px;
+        }
+        #message {
+            font-weight: bold;
+            margin: 10px 0;
+            color: red;
+        }
+    </style>
 </head>
 <body>
+    <h2>Snake Game</h2>
+    <div id="loginDiv">
+        Name: <input type="text" id="playerName">
+        Password (if Rudra): <input type="password" id="passwordInput">
+        <button id="enterBtn">Enter</button>
+        <div id="loginMessage"></div>
+    </div>
+    <div id="gameDiv" style="display:none;">
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div id="controls">
+            <button id="upBtn">Up</button>
+            <button id="downBtn">Down</button>
+            <button id="leftBtn">Left</button>
+            <button id="rightBtn">Right</button>
+            <button id="pauseBtn">Pause</button>
+            <button id="resumeBtn">Resume</button>
+            <button id="retryBtn">Retry</button>
+            <button id="soundBtn">Sound On/Off</button>
+        </div>
+        <div id="adminDiv" style="display:none;">
+            <h3>Admin Panel</h3>
+            <input type="text" id="removePlayerInput" placeholder="Enter player name to remove">
+            <button id="removePlayerBtn">Remove Player</button>
+            <div id="adminMsg"></div>
+        </div>
+        <div id="message"></div>
+        <div>Score: <span id="score">0</span></div>
+    </div>
 
-<div id="controls">
-  Name: <input type="text" id="playerName">
-  <button onclick="startGame()">Start Game</button>
-</div>
+    <script>
+        let canvas = document.getElementById("gameCanvas");
+        let ctx = canvas.getContext("2d");
+        const grid = 20;
+        let count = 0;
+        let snake = [{x: 160, y: 160}];
+        let dx = grid;
+        let dy = 0;
+        let food = {x: 0, y:0};
+        let score = 0;
+        let paused = false;
+        let soundOn = true;
 
-<canvas id="gameCanvas" width="400" height="400"></canvas>
+        // LocalStorage keys
+        const storedPlayersKey = "snakePlayers";
+        const removedPlayersKey = "removedPlayers";
 
-<div id="leaderboard">
-  <h2>Leaderboard</h2>
-  <ul id="scoresList"></ul>
-  <button onclick="restartGame()">Back to Game</button>
-</div>
+        let players = JSON.parse(localStorage.getItem(storedPlayersKey)) || [];
+        let removedPlayers = JSON.parse(localStorage.getItem(removedPlayersKey)) || [];
+        let isAdmin = false;
+        let currentPlayer = "";
 
-<audio id="eatSound" src="https://www.soundjay.com/button/beep-07.mp3"></audio>
-<audio id="gameOverSound" src="https://www.soundjay.com/button/beep-10.mp3"></audio>
+        function randomFood() {
+            food.x = Math.floor(Math.random() * 20) * grid;
+            food.y = Math.floor(Math.random() * 20) * grid;
+        }
 
-<script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+        function draw() {
+            if(paused) return;
+            requestAnimationFrame(draw);
+            if (++count < 4) return;
+            count = 0;
 
-let snake = [{x:200, y:200}];
-let dx = 20, dy = 0;
-let food = {x:0, y:0};
-let score = 0;
-let gameInterval;
-let currentUser;
-let isAdmin = false;
+            ctx.clearRect(0,0,canvas.width, canvas.height);
 
-// Fixed admin password
-const ADMIN_PASSWORD = "0108";
+            // Snake
+            ctx.fillStyle = "green";
+            snake.forEach(function(part) {
+                ctx.fillRect(part.x, part.y, grid-1, grid-1);
+            });
 
-// Sounds
-const eatSound = document.getElementById("eatSound");
-const gameOverSound = document.getElementById("gameOverSound");
+            // Food
+            ctx.fillStyle = "red";
+            ctx.fillRect(food.x, food.y, grid-1, grid-1);
 
-// Start game
-function startGame() {
-  const name = document.getElementById("playerName").value.trim();
-  if(!name) { alert("Enter your name!"); return; }
-  currentUser = name;
+            // Move snake
+            let head = {x: snake[0].x + dx, y: snake[0].y + dy};
 
-  if(name === "Rudra") {
-    handleAdminLogin();
-  } else {
-    isAdmin = false;
-    initGame();
-  }
-}
+            // Wall collision
+            if(head.x < 0 || head.x >= canvas.width || head.y <0 || head.y >= canvas.height || snake.some(p => p.x===head.x && p.y===head.y)){
+                alert("Game Over! Score: " + score);
+                resetGame();
+                return;
+            }
 
-// Admin password input
-function handleAdminLogin() {
-  let pass = prompt("Enter admin password:");
-  if(pass === ADMIN_PASSWORD) {
-    alert("Welcome admin!");
-    isAdmin = true;
-  } else {
-    alert("Wrong password! Playing as normal player.");
-    isAdmin = false;
-  }
-  initGame();
-}
+            snake.unshift(head);
 
-// Initialize game
-function initGame() {
-  snake = [{x:200, y:200}];
-  dx = 20; dy = 0; score = 0;
-  placeFood();
-  document.getElementById("controls").style.display = "none";
-  canvas.style.display = "block";
-  document.getElementById("leaderboard").style.display = "none";
-  if(gameInterval) clearInterval(gameInterval);
-  gameInterval = setInterval(gameLoop, 150); // slow speed
-}
+            // Food check
+            if(head.x === food.x && head.y === food.y){
+                score++;
+                document.getElementById("score").innerText = score;
+                randomFood();
+            } else {
+                snake.pop();
+            }
+        }
 
-// Place food randomly
-function placeFood() {
-  food.x = Math.floor(Math.random()*20)*20;
-  food.y = Math.floor(Math.random()*20)*20;
-}
+        function resetGame(){
+            snake = [{x:160,y:160}];
+            dx = grid;
+            dy = 0;
+            score = 0;
+            document.getElementById("score").innerText = score;
+            randomFood();
+        }
 
-// Game loop
-function gameLoop() {
-  const head = {x: snake[0].x + dx, y: snake[0].y + dy};
-  
-  // Collision check
-  if(head.x < 0 || head.x >= canvas.width || head.y < 0 || head.y >= canvas.height || snake.some(s => s.x === head.x && s.y === head.y)) {
-    clearInterval(gameInterval);
-    gameOverSound.play();
-    saveScore();
-    showLeaderboard();
-    return;
-  }
+        // Controls
+        document.getElementById("upBtn").onclick = () => {if(dy===0){dx=0; dy=-grid;}};
+        document.getElementById("downBtn").onclick = () => {if(dy===0){dx=0; dy=grid;}};
+        document.getElementById("leftBtn").onclick = () => {if(dx===0){dx=-grid; dy=0;}};
+        document.getElementById("rightBtn").onclick = () => {if(dx===0){dx=grid; dy=0;}};
+        document.getElementById("pauseBtn").onclick = () => {paused=true;};
+        document.getElementById("resumeBtn").onclick = () => {paused=false; draw();};
+        document.getElementById("retryBtn").onclick = () => {resetGame();};
+        document.getElementById("soundBtn").onclick = () => {soundOn = !soundOn; alert("Sound " + (soundOn?"On":"Off"));};
 
-  snake.unshift(head);
-  if(head.x === food.x && head.y === food.y) {
-    score += 10;
-    eatSound.play();
-    placeFood();
-  } else {
-    snake.pop();
-  }
+        // Login
+        document.getElementById("enterBtn").onclick = () => {
+            let name = document.getElementById("playerName").value.trim();
+            let pass = document.getElementById("passwordInput").value;
+            if(!name){
+                document.getElementById("loginMessage").innerText = "Enter a valid name.";
+                return;
+            }
 
-  drawGame();
-}
+            if(removedPlayers.includes(name)){
+                document.getElementById("loginMessage").innerText = "Admin has removed you. Use different name.";
+                return;
+            }
 
-// Draw snake & food
-function drawGame() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+            if(players.includes(name)){
+                document.getElementById("loginMessage").innerText = "Name already taken. Choose another.";
+                return;
+            }
 
-  // Draw food
-  ctx.fillStyle = "yellow";
-  ctx.beginPath();
-  ctx.arc(food.x+10, food.y+10, 10, 0, Math.PI*2);
-  ctx.fill();
+            if(name==="Rudra"){
+                if(pass!=="0108"){
+                    document.getElementById("loginMessage").innerText = "Incorrect password for Rudra.";
+                    return;
+                }
+                isAdmin = true;
+                document.getElementById("adminDiv").style.display = "block";
+            }
 
-  // Draw snake with colorful segments
-  snake.forEach((s,i)=>{
-    ctx.fillStyle = `hsl(${(i*30)%360}, 100%, 50%)`;
-    ctx.fillRect(s.x, s.y, 20, 20);
-  });
-}
+            currentPlayer = name;
+            players.push(name);
+            localStorage.setItem(storedPlayersKey, JSON.stringify(players));
 
-// Handle arrow keys
-document.addEventListener("keydown", e => {
-  switch(e.key) {
-    case "ArrowUp": if(dy===0){dx=0; dy=-20;} break;
-    case "ArrowDown": if(dy===0){dx=0; dy=20;} break;
-    case "ArrowLeft": if(dx===0){dx=-20; dy=0;} break;
-    case "ArrowRight": if(dx===0){dx=20; dy=0;} break;
-  }
-});
+            document.getElementById("loginDiv").style.display="none";
+            document.getElementById("gameDiv").style.display="block";
+            draw();
+        }
 
-// Save score
-function saveScore() {
-  let scores = JSON.parse(localStorage.getItem("snakeScores")) || [];
-  scores.push({user: currentUser, score});
-  localStorage.setItem("snakeScores", JSON.stringify(scores));
-}
+        // Admin remove player
+        document.getElementById("removePlayerBtn").onclick = () => {
+            let remName = document.getElementById("removePlayerInput").value.trim();
+            if(remName && players.includes(remName)){
+                removedPlayers.push(remName);
+                localStorage.setItem(removedPlayersKey, JSON.stringify(removedPlayers));
+                players = players.filter(p => p !== remName);
+                localStorage.setItem(storedPlayersKey, JSON.stringify(players));
+                document.getElementById("adminMsg").innerText = remName + " has been removed by admin!";
+            } else {
+                document.getElementById("adminMsg").innerText = "Player not found.";
+            }
+        }
 
-// Show leaderboard
-function showLeaderboard() {
-  document.getElementById("controls").style.display = "none";
-  canvas.style.display = "none";
-  const scores = JSON.parse(localStorage.getItem("snakeScores")) || [];
-  const scoresList = document.getElementById("scoresList");
-  scoresList.innerHTML = "";
+        // Keyboard arrows
+        document.addEventListener("keydown", function(e){
+            if(e.key==="ArrowUp" && dy===0){dx=0; dy=-grid;}
+            if(e.key==="ArrowDown" && dy===0){dx=0; dy=grid;}
+            if(e.key==="ArrowLeft" && dx===0){dx=-grid; dy=0;}
+            if(e.key==="ArrowRight" && dx===0){dx=grid; dy=0;}
+        });
 
-  scores.forEach((s,index)=>{
-    const li = document.createElement("li");
-    li.textContent = `${s.user} - ${s.score}`;
-    
-    if(isAdmin && s.user !== "Rudra") {
-      const removeBtn = document.createElement("button");
-      removeBtn.textContent = "❌ Remove";
-      removeBtn.onclick = ()=> removePlayer(index);
-      li.appendChild(removeBtn);
-    }
-
-    scoresList.appendChild(li);
-  });
-
-  document.getElementById("leaderboard").style.display = "block";
-}
-
-// Remove player (admin only)
-function removePlayer(index) {
-  let scores = JSON.parse(localStorage.getItem("snakeScores")) || [];
-  scores.splice(index,1);
-  localStorage.setItem("snakeScores", JSON.stringify(scores));
-  showLeaderboard();
-}
-
-// Restart game
-function restartGame() {
-  document.getElementById("controls").style.display = "block";
-  document.getElementById("leaderboard").style.display = "none";
-}
-</script>
+        randomFood();
+    </script>
 </body>
 </html>
