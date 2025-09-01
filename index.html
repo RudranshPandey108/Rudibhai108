@@ -16,7 +16,7 @@
       margin: 20px auto; 
       border: 2px solid white; 
     }
-    #controls { margin: 15px; }
+    #controls, #touchControls { margin: 15px; }
     button { 
       margin: 5px; padding: 10px 20px; 
       background: #444; color: #fff; border: none; 
@@ -31,6 +31,7 @@
       display: none; 
     }
     input { padding: 8px; margin: 10px; }
+    #touchControls button { width: 60px; height: 60px; font-size: 24px; }
   </style>
 </head>
 <body>
@@ -45,13 +46,17 @@
   <canvas id="gameCanvas" width="400" height="400" style="display:none;"></canvas>
 
   <div id="controls" style="display:none;">
-    <button onclick="changeDirection('UP')">⬆️</button><br>
-    <button onclick="changeDirection('LEFT')">⬅️</button>
-    <button onclick="changeDirection('DOWN')">⬇️</button>
-    <button onclick="changeDirection('RIGHT')">➡️</button><br>
     <button onclick="pauseGame()">⏸️ Pause</button>
     <button onclick="resumeGame()">▶️ Resume</button>
     <button onclick="resetGame()">🔄 Retry</button>
+  </div>
+
+  <!-- Mobile touch controls -->
+  <div id="touchControls" style="display:none;">
+    <button onclick="changeDirection('UP')">⬆️</button><br>
+    <button onclick="changeDirection('LEFT')">⬅️</button>
+    <button onclick="changeDirection('DOWN')">⬇️</button>
+    <button onclick="changeDirection('RIGHT')">➡️</button>
   </div>
 
   <div id="leaderboard">
@@ -65,6 +70,8 @@
     const ctx = canvas.getContext("2d");
 
     let snake, food, dx, dy, score, gameInterval, isPaused, currentUser, speed;
+    let isAdmin = false; // admin flag
+    const adminPassword = "letmein123"; // secret password for Rudra
 
     function startGame() {
       const usernameInput = document.getElementById("username").value.trim();
@@ -73,9 +80,25 @@
         return;
       }
       currentUser = usernameInput;
+
+      // Admin password check
+      if (currentUser === "Rudra") {
+        const password = prompt("Enter admin password:");
+        if (password === adminPassword) {
+          isAdmin = true;
+          alert("Welcome Admin Rudra! You can remove players from leaderboard.");
+        } else {
+          isAdmin = false;
+          alert("Incorrect password! You will play as normal player.");
+        }
+      } else {
+        isAdmin = false;
+      }
+
       document.getElementById("login").style.display = "none";
       canvas.style.display = "block";
       document.getElementById("controls").style.display = "block";
+      document.getElementById("touchControls").style.display = "block";
       resetGame();
     }
 
@@ -85,7 +108,7 @@
       dx = 20; dy = 0;
       score = 0;
       isPaused = false;
-      speed = 250; // initial slower speed
+      speed = 250;
       clearInterval(gameInterval);
       gameInterval = setInterval(drawGame, speed);
     }
@@ -102,11 +125,9 @@
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Move snake
       let head = {x: snake[0].x + dx, y: snake[0].y + dy};
       snake.unshift(head);
 
-      // Check food
       if (head.x === food.x && head.y === food.y) {
         score++;
         food = randomFood();
@@ -115,17 +136,14 @@
         snake.pop();
       }
 
-      // Draw food
       ctx.fillStyle = "red";
       ctx.fillRect(food.x, food.y, 20, 20);
 
-      // Draw snake
       ctx.fillStyle = "lime";
       for (let part of snake) {
         ctx.fillRect(part.x, part.y, 20, 20);
       }
 
-      // Check collision
       if (
         head.x < 0 || head.x >= canvas.width || 
         head.y < 0 || head.y >= canvas.height ||
@@ -134,7 +152,6 @@
         endGame();
       }
 
-      // Score
       ctx.fillStyle = "white";
       ctx.font = "18px Arial";
       ctx.fillText("Score: " + score, 10, 20);
@@ -142,7 +159,7 @@
 
     function increaseSpeed() {
       clearInterval(gameInterval);
-      speed = Math.max(50, speed - 5); // gradually increase speed
+      speed = Math.max(50, speed - 5);
       gameInterval = setInterval(drawGame, speed);
     }
 
@@ -176,6 +193,7 @@
 
     function showLeaderboard() {
       document.getElementById("controls").style.display = "none";
+      document.getElementById("touchControls").style.display = "none";
       canvas.style.display = "none";
       const scores = JSON.parse(localStorage.getItem("snakeScores")) || [];
       const scoresList = document.getElementById("scoresList");
@@ -185,8 +203,7 @@
         const li = document.createElement("li");
         li.textContent = `${s.user} - ${s.score}`;
 
-        // Admin feature: Rudra can remove other players
-        if (currentUser === "Rudra" && s.user !== "Rudra") {
+        if (isAdmin && s.user !== "Rudra") {
           const removeBtn = document.createElement("button");
           removeBtn.textContent = "❌ Remove";
           removeBtn.style.marginLeft = "10px";
@@ -211,6 +228,7 @@
       document.getElementById("leaderboard").style.display = "none";
       canvas.style.display = "block";
       document.getElementById("controls").style.display = "block";
+      document.getElementById("touchControls").style.display = "block";
       resetGame();
     }
 
