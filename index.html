@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Granny Night — Horror Game</title>
+<style>
+  /* -------------- layout & theme -------------- */
+  :root{--red:#b3001b;--dark:#050507;--light:#ffeecc}
+  html,body{height:100%;margin:0;background:#000;color:var(--light);font-family:Segoe UI,Arial,sans-serif}
+  #wrap{display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px}
+  h1{margin:6px;font-size:20px;letter-spacing:2px;text-shadow:0 0 8px rgba(179,0,27,.9)}
+  #hud{display:flex;gap:10px;align-items:center}
+  #hud > *{background:rgba(255,255,255,.04);padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.05)}
+  #canvasWrap{position:relative; width:360px; max-width:96vw}
+  canvas{display:block;width:100%;height:auto;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.8); background: #020204}
+  /* overlay UI */
+  #controls{display:flex;gap:8px;justify-content:center;margin-top:6px}
+  .btn{background:var(--red);color:white;padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:700}
+  .btn.secondary{background:transparent;border:1px solid rgba(255,255,255,.08)}
+  #scoreBoard{font-weight:700}
+  /* joystick */
+  #joy{width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.04);position:relative;margin:10px auto;touch-action:none;display:flex;align-items:center;justify-content:center}
+  #stick{width:46px;height:46px;border-radius:50%;background:linear-gradient(#ff6b6b,#c0392b);position:absolute;left:42px;top:42px;box-shadow:0 6px 14px rgba(0,0,0,.5)}
+  /* small labels */
+  .small{font-size:13px;opacity:.9}
+  /* jumpscare overlay */
+  #jumpscare{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#000;z-index:40}
+  #jumpscare img{max-width:90%;max-height:90%;filter:drop-shadow(0 0 20px #ff0000)}
+  /* pause overlay */
+  #pauseOverlay{position:absolute;inset:0;display:none;align-items:center;justify-content:center;z-index:20}
+  #pauseOverlay .pbox{background:rgba(0,0,0,.6);padding:16px;border-radius:8px;border:1px solid rgba(255,255,255,.06)}
+  /* tiny help */
+  .help{font-size:12px;opacity:.8;margin-top:6px}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>GRANNY NIGHT — SURVIVE THE DARK</h1>
+
+  <div id="hud">
+    <div id="scoreBoard">Time: <b id="time">0.0s</b> | Best: <b id="best">0.0s</b></div>
+    <div id="state" class="small">Status: <span id="statusText">Ready</span></div>
+  </div>
+
+  <div id="canvasWrap">
+    <canvas id="game" width="360" height="640"></canvas>
+
+    <!-- jumpscare & pause overlays (absolute on top of canvas) -->
+    <div id="jumpscare"><img id="jumpImg" src="https://i.ibb.co/0y0F12m/jumpscare.png" alt="Jumpscare"></div>
+    <div id="pauseOverlay"><div class="pbox"><div style="font-size:18px;font-weight:800">PAUSED</div><div class="help" style="margin-top:6px">Tap Resume to continue</div></div></div>
+  </div>
+
+  <div id="controls">
+    <button class="btn" id="startBtn">▶ Start</button>
+    <button class="btn secondary" id="pauseBtn" disabled>⏸ Pause</button>
+    <button class="btn secondary" id="retryBtn" disabled>🔄 Retry</button>
+    <button class="btn secondary" id="muteBtn">🔊</button>
+  </div>
+
+  <div id="joy">
+    <div id="stick"></div>
+  </div>
+
+  <div class="help">Use joystick (touch) or arrow keys to move. Keep flashlight pointed forward. Survive as long as you can.</div>
+</div>
+
+<!-- AUDIO -->
+<audio id="bg" loop preload="auto">
+  <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" type="audio/mpeg">
+</audio>
+<audio id="scream" preload="auto">
+  <source src="https://actions.google.com/sounds/v1/foley/door_creak_jingle.ogg" type="audio/ogg">
+</audio>
+<audio id="jumpsound" preload="auto">
+  <source src="https://actions.google.com/sounds/v1/human/crying_baby.ogg" type="audio/ogg">
+</audio>
+
+<script>
+/* ========= single-file Granny-style horror game =========
+   Controls:
+   - Mobile: use on-screen joystick (touch) to move
+   - Desktop: arrow keys to move
+   Buttons:
+   - Start: unlocks audio & begins
+   - Pause: pause/resume
+   - Retry: after game over
+   - Mute: toggle audio
+
+   Deployment: replace your index.html on repo, commit, reload GitHub Pages link.
+*/
+
+/* ---------- canvas & utilities ---------- */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+const startBtn = document.getElementById('startBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const retryBtn = document.getElementById('retryBtn');
+const muteBtn = document.getElementById('muteBtn');
+const statusText = document.getElementById('statusText');
+const timeEl = document.getElementById('time');
+const bestEl = document.getElementById('best');
+const jumpscareDiv = document.getElementById('jumpscare');
+const pauseOverlay = document.getElementById('pauseOverlay');
+
+const bg = document.getElementById('bg');
+const scream = document.getElementById('scream');
+const jumpsound = document.getElementById('jumpsound');
+
+let best = parseFloat(localStorage.getItem('granny_best')||0);
+bestEl.textContent = best.toFixed(1);
+
+/* ---------- game state ---------- */
+let player = { x: W/2, y: H - 120, r: 12, speed: 2.6 };
+let granny = { x: W/2, y: 80, r: 18, state: 'idle' }; // enemy
+let objs = []; // optional obstacles (not used for simplicity)
+let running = false, paused = false, over = false;
+let startTime = 0, elapsed = 0, lastFrame = 0;
+let joystick = { dx:0, dy:0 };
+
+/* ---------- visuals ---------- */
+const LIGHT_RADIUS = 120; // flashlight radius
+const FOV = Math.PI*0.65; // cone angle
+
+/* ---------- joystick (touch) ---------- */
+const joy = document.getElementById('joy'), stick = document.getElementById('stick');
+const center = { x: 65, y:65 }; // approximate center inside #joy
+let dragging = false;
+
+function setStick(mx,my){
+  const dx = mx - center.x, dy = my - center.y;
+  let dist = Math.hypot(dx,dy);
+  const max = 40;
+  let nx = dx, ny = dy;
+  if(dist>max){ nx = dx / dist * max; ny = dy / dist * max; dist=max; }
+  stick.style.left = (center.x - 23 + nx) + 'px';
+  stick.style.top  = (center.y - 23 + ny) + 'px';
+  joystick.dx = nx / max; joystick.dy = ny / max;
+}
+function resetStick(){
+  stick.style.left = (center.x - 23) + 'px';
+  stick.style.top = (center.y - 23) + 'px';
+  joystick.dx = 0; joystick.dy = 0;
+}
+joy.addEventListener('touchstart', e => { dragging=true; const t=e.touches[0]; const rect=joy.getBoundingClientRect(); setStick(t.clientX-rect.left, t.clientY-rect.top); e.preventDefault(); }, {passive:false});
+joy.addEventListener('touchmove', e => { if(!dragging) return; const t=e.touches[0]; const rect=joy.getBoundingClientRect(); setStick(t.clientX-rect.left, t.clientY-rect.top); e.preventDefault(); }, {passive:false});
+joy.addEventListener('touchend', e => { dragging=false; resetStick(); }, {passive:false});
+
+/* also support mouse on joystick for desktop */
+joy.addEventListener('mousedown', e => { dragging=true; const rect=joy.getBoundingClientRect(); setStick(e.clientX-rect.left, e.clientY-rect.top); e.preventDefault();});
+window.addEventListener('mousemove', e => { if(!dragging) return; const rect=joy.getBoundingClientRect(); setStick(e.clientX-rect.left, e.clientY-rect.top); });
+window.addEventListener('mouseup', e => { dragging=false; resetStick(); });
+
+/* ---------- keyboard ---------- */
+const keyState = {};
+window.addEventListener('keydown', e => { keyState[e.key] = true; /* prevent arrow scroll */ if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault(); });
+window.addEventListener('keyup', e => { keyState[e.key] = false; });
+
+/* ---------- enemy AI: granny ---------- */
+function updateGranny(dt){
+  // granny wanders; when player flashlight points near granny, granny notices and chases faster
+  // compute vector to player
+  const dx = player.x - granny.x, dy = player.y - granny.y;
+  const dist = Math.hypot(dx,dy);
+  // detection by light cone: is granny inside player's cone?
+  const px = player.x, py = player.y;
+  // facing vector approximated by joystick + keyboard (or toward upwards if stationary)
+  let fx = joystick.dx || ((keyState['ArrowRight']?1:0)-(keyState['ArrowLeft']?1:0));
+  let fy = joystick.dy || ((keyState['ArrowDown']?1:0)-(keyState['ArrowUp']?1:0));
+  // if no input, assume forward (up)
+  if(Math.abs(fx)+Math.abs(fy) < 0.01){ fx = 0; fy = -1; }
+  const toGx = granny.x - px, toGy = granny.y - py;
+  const ang = Math.acos( (fx*toGx+fy*toGy) / ( Math.hypot(fx,fy)*Math.hypot(toGx,toGy) + 0.0001) );
+  const inCone = Math.abs(ang) < (FOV/2) && Math.hypot(granny.x-px, granny.y-py) < LIGHT_RADIUS*1.6;
+
+  // speed behavior
+  let speed = 0.4 + Math.min(1.8, elapsed*0.03); // grows slowly over time
+  if(inCone) speed *= 2.2; // granny aggravated when in light cone
+  // wander bias
+  const wanderX = Math.sin(perfNow/700 + granny.x)*0.6;
+  const wanderY = Math.cos(perfNow/900 + granny.y)*0.6;
+
+  granny.x += ( (dx/dist) * speed + wanderX*0.4 ) * dt * 60;
+  granny.y += ( (dy/dist) * speed + wanderY*0.4 ) * dt * 60;
+
+  // stay inside bounds
+  granny.x = Math.max(20, Math.min(W-20, granny.x));
+  granny.y = Math.max(20, Math.min(H-20, granny.y));
+}
+
+/* ---------- draw flashlight darkness & cone ---------- */
+function drawScene(){
+  // floor noise/texture simple: dark fill already suffices
+  // draw vignette background subtle
+  ctx.fillStyle = '#030304';
+  ctx.fillRect(0,0,W,H);
+
+  // draw spooky decor: faint silhouettes
+  ctx.fillStyle = 'rgba(40,10,10,0.06)';
+  for(let i=0;i<6;i++){
+    ctx.fillRect((i*70+40)%W, H-120 - (i%3)*20, 20, 80);
+  }
+
+  // draw granny glow (if near the light, she is more visible)
+  const gDist = Math.hypot(player.x - granny.x, player.y - granny.y);
+  let glowAlpha = clamp(1.2 - gDist/220, 0, 1);
+  const ggrad = ctx.createRadialGradient(granny.x, granny.y, 4, granny.x, granny.y, granny.r*4);
+  ggrad.addColorStop(0, `rgba(255,255,255,${0.8*glowAlpha})`);
+  ggrad.addColorStop(1, `rgba(179,0,27,${0.0*glowAlpha})`);
+  ctx.fillStyle = ggrad;
+  ctx.beginPath(); ctx.arc(granny.x, granny.y, granny.r*4, 0, Math.PI*2); ctx.fill();
+
+  // draw player (flashlight center)
+  ctx.fillStyle = '#9ef';
+  ctx.beginPath(); ctx.arc(player.x, player.y, player.r, 0, Math.PI*2); ctx.fill();
+
+  // draw granny core
+  ctx.fillStyle = '#b3001b';
+  ctx.beginPath(); ctx.arc(granny.x, granny.y, granny.r, 0, Math.PI*2); ctx.fill();
+
+  // FLASHLIGHT: draw darkness layer then carve cone
+  ctx.save();
+  // darkness
+  ctx.fillStyle = 'rgba(0,0,0,0.96)';
+  ctx.fillRect(0,0,W,H);
+
+  // compute facing vector (same logic as AI)
+  let fx = joystick.dx || ((keyState['ArrowRight']?1:0)-(keyState['ArrowLeft']?1:0));
+  let fy = joystick.dy || ((keyState['ArrowDown']?1:0)-(keyState['ArrowUp']?1:0));
+  if(Math.abs(fx)+Math.abs(fy) < 0.01){ fx = 0; fy = -1; } // default up
+
+  // get angle
+  const faceAngle = Math.atan2(fy, fx);
+  // carve cone in darkness using composite operation
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath();
+  ctx.moveTo(player.x, player.y);
+  const steps = 24;
+  for(let i=0;i<=steps;i++){
+    const a = faceAngle - FOV/2 + (FOV)*(i/steps);
+    const rx = player.x + Math.cos(a)*LIGHT_RADIUS*1.05;
+    const ry = player.y + Math.sin(a)*LIGHT_RADIUS*1.05;
+    ctx.lineTo(rx, ry);
+  }
+  ctx.closePath();
+  // radial fade inside cone
+  const lg = ctx.createRadialGradient(player.x, player.y, 10, player.x, player.y, LIGHT_RADIUS*1.05);
+  lg.addColorStop(0, 'rgba(0,0,0,1)');
+  lg.addColorStop(0.2,'rgba(0,0,0,0.8)');
+  lg.addColorStop(1,'rgba(0,0,0,0)');
+  ctx.fillStyle = 'rgba(0,0,0,1)';
+  ctx.fill();
+
+  // give a soft hole to reveal the cone area - use clip then draw subtle lighting inside
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath();
+  ctx.moveTo(player.x, player.y);
+  for(let i=0;i<=steps;i++){
+    const a = faceAngle - FOV/2 + (FOV)*(i/steps);
+    const rx = player.x + Math.cos(a)*LIGHT_RADIUS;
+    const ry = player.y + Math.sin(a)*LIGHT_RADIUS;
+    ctx.lineTo(rx, ry);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+
+  // subtle flicker effect around cone border for horror vibe
+  ctx.strokeStyle = `rgba(255,220,180,${0.06 + 0.02*Math.sin(perfNow/120)})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, LIGHT_RADIUS*0.08, 0, Math.PI*2);
+  ctx.stroke();
+}
+
+/* ---------- collision & gameover ---------- */
+function checkCollision(){
+  const d = Math.hypot(player.x - granny.x, player.y - granny.y);
+  if(d < player.r + granny.r + 4){
+    triggerGameOver();
+  }
+}
+
+/* ---------- game flow ---------- */
+let perfNow = 0;
+function gameTick(ts){
+  if(!running || paused || over) return;
+  if(!lastFrame) lastFrame = ts;
+  const dt = (ts - lastFrame)/1000;
+  lastFrame = ts;
+  perfNow = ts;
+
+  // update elapsed time
+  elapsed = (performance.now() - startTime)/1000;
+  timeEl.textContent = elapsed.toFixed(1) + 's';
+
+  // movement: joystick & keyboard aggregated
+  let mvx = joystick.dx || 0;
+  let mvy = joystick.dy || 0;
+  // keyboard contributes - arrow keys: we treat up as negative y
+  mvx += (keyState['ArrowRight']?1:0) - (keyState['ArrowLeft']?1:0);
+  mvy += (keyState['ArrowDown']?1:0) - (keyState['ArrowUp']?1:0);
+  // normalize
+  if(Math.abs(mvx) + Math.abs(mvy) > 0.001){
+    const mag = Math.hypot(mvx,mvy) || 1;
+    player.x += (mvx / mag) * player.speed * dt * 80;
+    player.y += (mvy / mag) * player.speed * dt * 80;
+    // clamp to bounds
+    player.x = Math.max(12, Math.min(W-12, player.x));
+    player.y = Math.max(12, Math.min(H-12, player.y));
+  }
+
+  // update granny
+  updateGranny(dt);
+
+  // draw everything
+  ctx.clearRect(0,0,W,H);
+  drawScene();
+
+  // draw subtle blood-streaks when granny is near (horror vibe)
+  const near = Math.hypot(player.x - granny.x, player.y - granny.y) < 140;
+  if(near){
+    ctx.fillStyle = `rgba(179,0,27,${0.04 + 0.02*Math.sin(perfNow/140)})`;
+    ctx.fillRect(0,0,W,Math.random()*8);
+  }
+
+  // draw HUD pointer of granny (if outside cone, faint)
+  // small warning arrow
+  if(Math.hypot(player.x - granny.x, player.y - granny.y) > LIGHT_RADIUS*1.1){
+    const ang = Math.atan2(granny.y - player.y, granny.x - player.x);
+    const ax = player.x + Math.cos(ang)* (LIGHT_RADIUS*0.75);
+    const ay = player.y + Math.sin(ang)* (LIGHT_RADIUS*0.75);
+    ctx.fillStyle = 'rgba(255,0,0,0.08)';
+    ctx.beginPath(); ctx.arc(ax,ay,6,0,Math.PI*2); ctx.fill();
+  }
+
+  checkCollision();
+  requestAnimationFrame(gameTick);
+}
+
+/* ---------- start / pause / retry ---------- */
+startBtn.onclick = () => {
+  if(over) return;
+  if(!running){
+    running = true; paused=false; over=false; lastFrame=0; startTime = performance.now();
+    startBtn.disabled = true; pauseBtn.disabled = false; retryBtn.disabled = true;
+    statusText.textContent = 'Surviving';
+    // audio must be started by user gesture
+    try { if(!bg.paused){} else bg.play(); } catch(e){}
+    requestAnimationFrame(gameTick);
+  }
+};
+pauseBtn.onclick = () => {
+  if(!running) return;
+  paused = !paused;
+  pauseOverlay.style.display = paused ? 'flex' : 'none';
+  if(paused){
+    statusText.textContent = 'Paused';
+    bg.pause();
+  } else {
+    statusText.textContent = 'Surviving';
+    try { bg.play(); } catch(e){}
+    lastFrame = 0;
+    requestAnimationFrame(gameTick);
+  }
+};
+retryBtn.onclick = () => {
+  // reset everything
+  running = false; paused = false; over = false;
+  startBtn.disabled = false; pauseBtn.disabled = true; retryBtn.disabled = true;
+  statusText.textContent = 'Ready';
+  resetPositions();
+  timeEl.textContent = '0.0s';
+  jumpscareDiv.style.display = 'none';
+};
+
+/* mute */
+let muted = false;
+muteBtn.onclick = () => {
+  muted = !muted;
+  [bg,scream,jumpsound].forEach(a => a.muted = muted);
+  muteBtn.textContent = muted? '🔇' : '🔊';
+};
+
+/* ---------- game over sequence ---------- */
+function triggerGameOver(){
+  if(over) return;
+  over = true; running = false;
+  pauseBtn.disabled = true; retryBtn.disabled = false; startBtn.disabled = true;
+  statusText.textContent = 'Caught';
+  // stop music, play scream then jumpscare
+  try{ bg.pause(); }catch(e){}
+  try{ scream.currentTime = 0; scream.play(); }catch(e){}
+  // show jumpscare overlay after a tiny delay
+  setTimeout(()=> {
+    jumpscareDiv.style.display = 'flex';
+    try{ jumpsound.currentTime = 0; jumpsound.play(); }catch(e){}
+  }, 400);
+
+  // update best
+  if(elapsed > best){
+    best = elapsed;
+    localStorage.setItem('granny_best', best.toFixed(1));
+    bestEl.textContent = best.toFixed(1);
+  }
+}
+
+/* ---------- helper reset ---------- */
+function resetPositions(){
+  player.x = W/2; player.y = H - 120;
+  granny.x = Math.random()*(W-80)+40; granny.y = 80;
+  perfNow = 0; elapsed = 0; lastFrame = 0;
+}
+
+/* ---------- clamp helper ---------- */
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+
+/* ---------- initial setup ---------- */
+resetPositions();
+statusText.textContent = 'Ready';
+timeEl.textContent = '0.0s';
+bestEl.textContent = best.toFixed(1);
+
+/* ---------- small auto-play fallback:
+   browsers block autoplay with audio. The Start button is the gesture
+   that plays sound. But sometimes user wants music earlier: clicking canvas also works.
+*/
+canvas.addEventListener('click', ()=>{ try{ bg.play(); }catch(e){} });
+
+/* ---------- keyboard movement improvement: accelerate with hold ---------- */
+(function keyboardLoop(){
+  // keep loop running to update movement if keys held and game is running
+  if(running && !paused && !over){
+    // movement is processed in frame; nothing extra needed
+  }
+  requestAnimationFrame(keyboardLoop);
+})();
+
+/* ---------- final note: preload jumpscare image if remote fails, simple fallback: ---------- */
+const jumpImg = document.getElementById('jumpImg');
+jumpImg.onerror = ()=>{ jumpImg.src = 'https://i.imgur.com/3QZp8.png' } // fallback
+
+</script>
+</body>
+</html>
