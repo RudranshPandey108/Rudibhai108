@@ -71,12 +71,31 @@
     <button onclick="playAgain()">Play Again</button>
   </div>
 
+  <!-- 🎵 Sound Effects -->
+  <audio id="brickSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+  <audio id="paddleSound" src="https://actions.google.com/sounds/v1/cartoon/woodpecker_pecking.ogg"></audio>
+  <audio id="loseLifeSound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+  <audio id="levelUpSound" src="https://actions.google.com/sounds/v1/cartoon/concussive_drum_hit.ogg"></audio>
+
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 let paddle, ball, bricks, score, gameInterval, isPaused, currentUser, level, ballSpeed, lives;
 let soundOn = true;
+
+// Sounds
+const brickSound = document.getElementById("brickSound");
+const paddleSound = document.getElementById("paddleSound");
+const loseLifeSound = document.getElementById("loseLifeSound");
+const levelUpSound = document.getElementById("levelUpSound");
+
+function playSound(sound){
+  if(soundOn){
+    sound.currentTime = 0;
+    sound.play();
+  }
+}
 
 function startGame() {
   const usernameInput = document.getElementById("username").value.trim();
@@ -102,7 +121,7 @@ function createBricks(level) {
   bricks = [];
   const rows = level + 2;
   const cols = 7;
-  const brickWidth = 45; // FIX: chhoti bricks
+  const brickWidth = 45;
   for (let r=0; r<rows; r++){
     bricks[r]=[];
     for (let c=0; c<cols; c++){
@@ -125,7 +144,7 @@ function drawGame() {
   ctx.fillStyle="red"; ctx.fill(); ctx.closePath();
 
   // Bricks
-  const brickWidth=45, brickHeight=20, padding=10, offsetTop=30, offsetLeft=10; // FIX
+  const brickWidth=45, brickHeight=20, padding=10, offsetTop=30, offsetLeft=10;
   for(let r=0;r<bricks.length;r++){
     for(let c=0;c<bricks[r].length;c++){
       if(bricks[r][c].status){
@@ -148,6 +167,7 @@ function drawGame() {
     ball.dy*=-1;
     let hitPoint = ball.x-(paddle.x+paddle.width/2);
     ball.dx = hitPoint*0.15;
+    playSound(paddleSound);
   }
 
   // Collision with bricks
@@ -156,6 +176,7 @@ function drawGame() {
       const b = bricks[r][c];
       if(b.status && ball.x>b.x && ball.x<b.x+brickWidth && ball.y-ball.radius<b.y+brickHeight && ball.y+ball.radius>b.y){
         ball.dy*=-1; b.status=0; score++;
+        playSound(brickSound);
       }
     }
   }
@@ -168,6 +189,7 @@ function drawGame() {
   // Ball out of bounds
   if(ball.y-ball.radius>canvas.height){ 
     lives--;
+    playSound(loseLifeSound);
     if(lives>0){
       ball.x = canvas.width/2;
       ball.y = canvas.height-30;
@@ -185,6 +207,7 @@ function drawGame() {
       ball.dx = ballSpeed; ball.dy = -ballSpeed;
       createBricks(level);
       ball.x = canvas.width/2; ball.y = canvas.height-30;
+      playSound(levelUpSound);
     } else {
       alert("🎉 Congratulations! Level 50 completed!");
       endGame();
@@ -211,7 +234,10 @@ document.addEventListener("keyup", e=>{
 // Pause/Resume/Sound
 function pauseGame(){ isPaused=true; }
 function resumeGame(){ isPaused=false; }
-function toggleSound(){ soundOn=!soundOn; document.getElementById("soundBtn").textContent = soundOn?"🔊 Sound":"🔇 Mute"; }
+function toggleSound(){ 
+  soundOn=!soundOn; 
+  document.getElementById("soundBtn").textContent = soundOn?"🔊 Sound":"🔇 Mute"; 
+}
 
 // End game
 function endGame(){ clearInterval(gameInterval); saveScore(currentUser,score); showLeaderboard(); }
