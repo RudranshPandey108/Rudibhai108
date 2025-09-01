@@ -1,209 +1,69 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Paddle Game - Rudransh Edition</title>
+<title>Paddle Game with Joystick</title>
 <style>
-  body { text-align:center; font-family:sans-serif; background:#222; color:#fff; }
-  canvas { background:#000; display:block; margin:20px auto; border:2px solid #fff; }
-  #controls { margin:10px; }
-  #levelScore { margin:10px; font-size:18px; }
-  #joystick { position: relative; width:150px; height:150px; margin:20px auto; background:#444; border-radius:50%; touch-action:none; }
-  #stick { position:absolute; width:50px; height:50px; background:#888; border-radius:50%; top:50%; left:50%; transform:translate(-50%, -50%); }
-  button { margin:5px; padding:5px 10px; font-size:16px; }
+  canvas { background: #eee; display: block; margin: 0 auto; }
+  #controls, #touchControls { text-align: center; margin-top: 10px; }
+  #level, #score { font-size: 20px; margin: 5px; }
+  #joystick { position: relative; width: 100px; height: 100px; margin: 0 auto; background: #ccc; border-radius: 50%; touch-action: none; }
+  #stick { position: absolute; width: 40px; height: 40px; background: #888; border-radius: 50%; top: 30px; left: 30px; }
 </style>
 </head>
 <body>
-
-<h2>Paddle Game - Rudransh Edition</h2>
-<div id="levelScore">Level: 1 | Score: 0</div>
+<h1 style="text-align:center;">Paddle Game</h1>
+<div id="level">Level: 1</div>
+<div id="score">Score: 0</div>
 <canvas id="gameCanvas" width="480" height="320"></canvas>
-
 <div id="controls">
   <button onclick="pauseGame()">⏸️ Pause</button>
   <button onclick="resumeGame()">▶️ Resume</button>
   <button onclick="resetGame()">🔄 Retry</button>
   <button id="soundBtn" onclick="toggleSound()">🔊 Sound</button>
+  <span id="admin">Admin: Rudransh</span>
 </div>
-
 <div id="joystick">
   <div id="stick"></div>
 </div>
-
 <script>
-let canvas = document.getElementById("gameCanvas");
-let ctx = canvas.getContext("2d");
-
-let ballRadius = 10;
-let paddleHeight = 10;
-let paddleWidth = 75;
-let paddleX = (canvas.width - paddleWidth) / 2;
-
-let rightPressed = false;
-let leftPressed = false;
-
-let ballX = canvas.width/2;
-let ballY = canvas.height-30;
-let ballDX = 2;
-let ballDY = -2;
-let ballSpeed = 3;
-
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+let ball = { x: canvas.width/2, y: canvas.height-30, dx: 2, dy: -2, radius: 10 };
+let paddle = { width: 75, height: 10, x: (canvas.width-75)/2 };
+let bricks = [];
 let brickRowCount = 3;
 let brickColumnCount = 5;
-let brickWidth = 75;
-let brickHeight = 20;
-let brickPadding = 10;
-let brickOffsetTop = 30;
-let brickOffsetLeft = 30;
-
-let bricks = [];
-let score = 0;
-let level = 1;
-let soundOn = true;
-let gamePaused = false;
-
-const adminName = prompt("Enter your name:");
-if(adminName.toLowerCase() === "rudransh"){
-  alert("👑 Welcome Admin Rudransh!");
-}
-
-function createBricks(level){
-  bricks = [];
-  brickRowCount = Math.min(2 + level, 10); // max 10 rows
-  brickColumnCount = Math.min(3 + Math.floor(level/2), 10); // max 10 columns
-  for(let c=0; c<brickColumnCount; c++){
-    bricks[c] = [];
-    for(let r=0; r<brickRowCount; r++){
-      bricks[c][r] = { x:0, y:0, status:1 };
-    }
-  }
-}
+let brickWidth = 75, brickHeight = 20, brickPadding = 10, brickOffsetTop = 30, brickOffsetLeft = 30;
+let score = 0, level = 1, ballSpeed = 2;
+let soundOn = true, gamePaused = false;function createBricks(level) { bricks = []; brickRowCount = Math.min(3 + Math.floor(level/2), 10); // Gradual row increase for(let c=0; c<brickColumnCount; c++) { bricks[c] = []; for(let r=0; r<brickRowCount; r++) { bricks[c][r] = { x: 0, y: 0, status: 1 }; } } }
 
 createBricks(level);
 
-function drawBricks(){
-  for(let c=0; c<brickColumnCount; c++){
-    for(let r=0; r<brickRowCount; r++){
-      if(bricks[c][r].status === 1){
-        let brickX = (c*(brickWidth+brickPadding))+brickOffsetLeft;
-        let brickY = (r*(brickHeight+brickPadding))+brickOffsetTop;
-        bricks[c][r].x = brickX;
-        bricks[c][r].y = brickY;
-        ctx.fillStyle = "#0095DD";
-        ctx.fillRect(brickX, brickY, brickWidth, brickHeight);
-      }
-    }
-  }
-}
+function drawBall() { ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI*2); ctx.fillStyle = "#0095DD"; ctx.fill(); ctx.closePath(); }
 
-function drawBall(){
-  ctx.beginPath();
-  ctx.arc(ballX, ballY, ballRadius, 0, Math.PI*2);
-  ctx.fillStyle = "#FF4500";
-  ctx.fill();
-  ctx.closePath();
-}
+function drawPaddle() { ctx.beginPath(); ctx.rect(paddle.x, canvas.height-paddle.height, paddle.width, paddle.height); ctx.fillStyle = "#0095DD"; ctx.fill(); ctx.closePath(); }
 
-function drawPaddle(){
-  ctx.beginPath();
-  ctx.rect(paddleX, canvas.height-paddleHeight, paddleWidth, paddleHeight);
-  ctx.fillStyle = "#00FF00";
-  ctx.fill();
-  ctx.closePath();
-}
+function drawBricks() { for(let c=0;c<brickColumnCount;c++){ for(let r=0;r<brickRowCount;r++){ if(bricks[c][r].status===1){ let brickX = (c*(brickWidth+brickPadding))+brickOffsetLeft; let brickY = (r*(brickHeight+brickPadding))+brickOffsetTop; bricks[c][r].x = brickX; bricks[c][r].y = brickY; ctx.beginPath(); ctx.rect(brickX, brickY, brickWidth, brickHeight); ctx.fillStyle = "#0095DD"; ctx.fill(); ctx.closePath(); } } } }
 
-function drawLevelScore(){
-  document.getElementById("levelScore").textContent = `Level: ${level} | Score: ${score}`;
-}
+function draw() { if(gamePaused) return; ctx.clearRect(0,0,canvas.width,canvas.height); drawBricks(); drawBall(); drawPaddle();
 
-function collisionDetection(){
-  for(let c=0; c<brickColumnCount; c++){
-    for(let r=0; r<brickRowCount; r++){
-      let b = bricks[c][r];
-      if(b.status === 1){
-        if(ballX > b.x && ballX < b.x + brickWidth && ballY - ballRadius < b.y + brickHeight && ballY + ballRadius > b.y){
-          ballDY = -ballDY;
-          b.status = 0;
-          score++;
-          playSound('https://www.soundjay.com/button/sounds/button-16.mp3');
-          if(score === brickRowCount*brickColumnCount){
-            if(level < 50){
-              level++;
-              ballSpeed += 0.5;
-              createBricks(level);
-              ballX = canvas.width/2;
-              ballY = canvas.height-30;
-            } else {
-              alert("🎉 Congratulations! Maximum Level 50 reached!");
-              endGame();
-            }
-          }
-        }
-      }
-    }
-  }
-}
+// Ball collision with walls if(ball.x+ball.dx > canvas.width-ball.radius || ball.x+ball.dx < ball.radius) ball.dx = -ball.dx; if(ball.y+ball.dy < ball.radius) ball.dy = -ball.dy; else if(ball.y+ball.dy > canvas.height-ball.radius){ if(ball.x > paddle.x && ball.x < paddle.x + paddle.width){ ball.dy = -ball.dy; } else { resetGame(); } }
 
-function draw(){
-  if(gamePaused) return;
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  drawBricks();
-  drawBall();
-  drawPaddle();
-  drawLevelScore();
-  collisionDetection();
+// Ball collision with bricks for(let c=0;c<brickColumnCount;c++){ for(let r=0;r<brickRowCount;r++){ let b = bricks[c][r]; if(b.status && ball.x>b.x && ball.x<b.x+brickWidth && ball.y>b.y && ball.y<b.y+brickHeight){ ball.dy = -ball.dy; b.status=0; score++; playSound('https://www.soundjay.com/button/sounds/button-16.mp3'); if(score % (brickRowCount*brickColumnCount) === 0){ if(level < 50){ level++; ballSpeed += 0.5; createBricks(level); } else { alert('🎉 Maximum Level 50 reached!'); gamePaused=true; } document.getElementById('level').innerText = 'Level: '+level; } } } }
 
-  ballX += ballDX * ballSpeed;
-  ballY += ballDY * ballSpeed;
+ball.x += ball.dxballSpeed/2; ball.y += ball.dyballSpeed/2; requestAnimationFrame(draw); }
 
-  if(ballX + ballDX > canvas.width-ballRadius || ballX + ballDX < ballRadius) ballDX = -ballDX;
-  if(ballY + ballDY < ballRadius) ballDY = -ballDY;
-  else if(ballY + ballDY > canvas.height-ballRadius){
-    if(ballX > paddleX && ballX < paddleX + paddleWidth){
-      ballDY = -ballDY;
-    } else {
-      endGame();
-    }
-  }
+function resetGame(){ ball.x = canvas.width/2; ball.y = canvas.height-30; ball.dx = 2; ball.dy = -2; paddle.x = (canvas.width-paddle.width)/2; score = 0; level = 1; ballSpeed=2; createBricks(level); document.getElementById('score').innerText='Score: '+score; document.getElementById('level').innerText='Level: '+level; gamePaused=false; }
 
-  if(rightPressed && paddleX < canvas.width - paddleWidth) paddleX += 7;
-  else if(leftPressed && paddleX > 0) paddleX -= 7;
+function pauseGame(){ gamePaused=true; } function resumeGame(){ if(gamePaused){ gamePaused=false; draw(); } }
 
-  requestAnimationFrame(draw);
-}
+function toggleSound(){ soundOn=!soundOn; document.getElementById('soundBtn').textContent = soundOn?'🔊 Sound':'🔇 Mute'; } function playSound(url){ if(!soundOn) return; const audio=new Audio(url); audio.play(); }
 
-function endGame(){
-  alert("💥 Game Over!");
-  document.location.reload();
-}
+// Paddle control with joystick const joystick = document.getElementById('joystick'); const stick = document.getElementById('stick'); let dragging=false; let startX; stick.addEventListener('pointerdown', e=>{ dragging=true; startX=e.clientX; stick.setPointerCapture(e.pointerId); }); stick.addEventListener('pointermove', e=>{ if(!dragging) return; let dx = e.clientX - startX; paddle.x += dx; if(paddle.x<0) paddle.x=0; if(paddle.x>canvas.width-paddle.width) paddle.x=canvas.width-paddle.width; startX=e.clientX; }); stick.addEventListener('pointerup', e=>{ dragging=false; });
 
-function pauseGame(){ gamePaused = true; }
-function resumeGame(){ gamePaused = false; draw(); }
-function resetGame(){ document.location.reload(); }
+// Update score display setInterval(()=>{ document.getElementById('score').innerText='Score: '+score; },100);
 
-function toggleSound(){ soundOn = !soundOn; document.getElementById("soundBtn").textContent = soundOn ? "🔊 Sound" : "🔇 Mute"; }
-function playSound(url){ if(!soundOn) return; const audio = new Audio(url); audio.play(); }
-
-/* Joystick */
-let stick = document.getElementById("stick");
-let joystick = document.getElementById("joystick");
-let dragging = false;
-
-stick.addEventListener("pointerdown", e=>{ dragging=true; });
-document.addEventListener("pointerup", e=>{ dragging=false; stick.style.transform = "translate(-50%, -50%)"; leftPressed=false; rightPressed=false; });
-document.addEventListener("pointermove", e=>{
-  if(!dragging) return;
-  const rect = joystick.getBoundingClientRect();
-  let x = e.clientX - rect.left - rect.width/2;
-  x = Math.max(Math.min(x, rect.width/2), -rect.width/2);
-  stick.style.transform = `translate(${x}px, -50%)`;
-  leftPressed = x < -10;
-  rightPressed = x > 10;
-});
-
-draw();
-</script>
+draw(); </script>
 
 </body>
 </html>
