@@ -507,5 +507,329 @@
 
 })();
 </script>
+
+<!-- ===================== ADD-ONS START (No changes above) ===================== -->
+<style>
+  /* Overlays & widgets for special features */
+  #powerOverlay, #flashlightOverlay, #lockOverlay, #cameraOverlay {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 9999;
+  }
+  #powerOverlay { background: #000; color:#fff; flex-direction: column; gap:18px; }
+  #powerLogo { font-size: 26px; letter-spacing: 6px; opacity: 0; animation: fadeIn 1.2s ease forwards 0.4s }
+  #powerSpinner { width:48px;height:48px;border-radius:50%; border:4px solid rgba(255,255,255,0.2); border-top-color:#fff; animation: spin 1s linear infinite}
+  #restartText { font-size:13px; opacity:0.8 }
+  @keyframes spin { to{ transform: rotate(360deg);} }
+  @keyframes fadeIn { to{ opacity: 1} }
+
+  #flashlightOverlay{ background:#fff }
+  #lockOverlay { background: rgba(0,0,0,0.9); color:#dbeafe; flex-direction:column; gap:14px; text-align:center; }
+  #lockOverlay .btn { padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.06); color:#fff; cursor:pointer }
+
+  /* Camera overlay */
+  #cameraOverlay { background: rgba(0,0,0,0.94); color:#fff; flex-direction: column; gap:10px; }
+  #cameraView { width:min(92vw,720px); height: min(65vh,480px); background:#000; border-radius:12px; overflow:hidden }
+  #cameraView video{ width:100%; height:100%; object-fit:cover }
+  .overlayTopBar{
+    position: fixed; top:14px; left:50%; transform: translateX(-50%);
+    display:flex; gap:8px; align-items:center; background:rgba(255,255,255,0.06);
+    padding:8px 12px; border:1px solid rgba(255,255,255,0.16); border-radius:999px; z-index:10000; color:#fff
+  }
+  .overlayTopBar button{ background:transparent; border:1px solid rgba(255,255,255,0.25); color:#fff; padding:8px 10px; border-radius:999px; cursor:pointer }
+
+  /* Utility dock */
+  .utility-dock{
+    max-width:980px; margin: 10px auto 24px; padding:12px;
+    display:grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap:10px;
+  }
+  .util{ background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#e6eef8; padding:12px; border-radius:12px; text-align:center; font-size:14px; cursor:pointer }
+  .util small{ display:block; color:#94a3b8; font-size:12px; margin-top:4px }
+
+  /* Badge line under footer */
+  .badge-line{ text-align:center; color:#94a3b8; font-size:12px; margin-bottom:18px }
+</style>
+
+<!-- Quick utility dock (added, optional UI) -->
+<div class="utility-dock">
+  <div class="util" data-cmd="power off phone">Power Off<small>voice: power off phone</small></div>
+  <div class="util" data-cmd="restart phone">Restart<small>voice: restart phone</small></div>
+  <div class="util" data-cmd="flashlight on">Flashlight On<small>torch on</small></div>
+  <div class="util" data-cmd="flashlight off">Flashlight Off</div>
+  <div class="util" data-cmd="open camera">Open Camera</div>
+  <div class="util" data-cmd="close camera">Close Camera</div>
+  <div class="util" data-cmd="open whatsapp">Open WhatsApp</div>
+  <div class="util" data-cmd="open gallery">Open Gallery</div>
+  <div class="util" data-cmd="battery status">Battery Status</div>
+  <div class="util" data-cmd="device info">Device Info</div>
+  <div class="util" data-cmd="keep screen on">Keep Screen On</div>
+  <div class="util" data-cmd="allow sleep">Allow Sleep</div>
+  <div class="util" data-cmd="vibrate">Vibrate</div>
+  <div class="util" data-cmd="lock screen">Lock Screen</div>
+  <div class="util" data-cmd="unlock screen">Unlock Screen</div>
+</div>
+
+<!-- Overlays -->
+<div id="powerOverlay">
+  <div id="powerSpinner"></div>
+  <div id="powerLogo">S H U T T I N G &nbsp; D O W N</div>
+  <div id="restartText"></div>
+</div>
+
+<div id="flashlightOverlay"></div>
+
+<div id="lockOverlay">
+  <div style="font-size:28px; letter-spacing:2px">🔒 Screen Locked</div>
+  <div>Say <b>"unlock screen"</b> or press the button below</div>
+  <button class="btn" id="unlockBtn">Unlock</button>
+</div>
+
+<div id="cameraOverlay">
+  <div class="overlayTopBar">
+    <button id="btnCloseCamera">Close</button>
+    <button id="btnSwitchCamera">Switch</button>
+  </div>
+  <div id="cameraView"><video id="camVideo" autoplay playsinline muted></video></div>
+</div>
+
+<div class="badge-line">Extra features added — original Siri assistant code remains unchanged.</div>
+
+<script id="addons">
+/* ==========================================================
+   ADD-ON FEATURES (No changes to original code above)
+   - Typed commands intercepted before original handler
+   - Voice commands detected by observing transcript "User: ..."
+   ========================================================== */
+
+(function(){
+  const transcriptEl = document.getElementById('transcript');
+  const btnSend = document.getElementById('btnSend');
+  const cmdInput = document.getElementById('cmdInput');
+  const logEl = document.getElementById('log');
+
+  // Overlays & elements
+  const powerOverlay = document.getElementById('powerOverlay');
+  const restartText = document.getElementById('restartText');
+  const flashlightOverlay = document.getElementById('flashlightOverlay');
+  const lockOverlay = document.getElementById('lockOverlay');
+  const unlockBtn = document.getElementById('unlockBtn');
+  const cameraOverlay = document.getElementById('cameraOverlay');
+  const camVideo = document.getElementById('camVideo');
+  const btnCloseCamera = document.getElementById('btnCloseCamera');
+  const btnSwitchCamera = document.getElementById('btnSwitchCamera');
+
+  let wakeLock = null;
+  let camStream = null;
+  let usingBackCam = true;
+
+  function addLog(msg){
+    const time = new Date().toLocaleTimeString();
+    const div = document.createElement('div');
+    div.innerHTML = `<strong style="color:#9ae6b4">${time}</strong> — <span style="color:#bfe1ff">${escapeHtml(msg)}</span>`;
+    logEl.prepend(div);
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  // ---------- Feature actions ----------
+  function powerOffAnimation(){
+    powerOverlay.style.display = 'flex';
+    restartText.textContent = '';
+    // fade to black feel is already here; auto hide to simulate "powered off"
+    setTimeout(()=> { document.body.style.filter='brightness(0)'; }, 600);
+  }
+  function restartAnimation(){
+    powerOverlay.style.display = 'flex';
+    restartText.textContent = 'Restarting...';
+    document.body.style.filter='';
+    setTimeout(()=> { document.body.style.filter='brightness(0)'; }, 600);
+    // "boot up" after 3s
+    setTimeout(()=> {
+      document.body.style.filter='';
+      powerOverlay.style.display='none';
+    }, 3200);
+  }
+
+  function flashlight(on){
+    flashlightOverlay.style.display = on ? 'flex' : 'none';
+  }
+
+  async function openCamera(){
+    try{
+      cameraOverlay.style.display='flex';
+      if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+      camStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: usingBackCam ? {ideal:'environment'} : 'user' },
+        audio: false
+      });
+      camVideo.srcObject = camStream;
+      addLog('Camera opened');
+    }catch(e){
+      addLog('Camera error: ' + e.message);
+      alert('Camera permission or device error.');
+    }
+  }
+  function closeCamera(){
+    cameraOverlay.style.display='none';
+    if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+    addLog('Camera closed');
+  }
+  btnCloseCamera.addEventListener('click', closeCamera);
+  btnSwitchCamera.addEventListener('click', async ()=>{
+    usingBackCam = !usingBackCam;
+    await openCamera();
+  });
+
+  async function batteryStatus(){
+    try{
+      if(!('getBattery' in navigator)){ alert('Battery API not supported'); return; }
+      const b = await navigator.getBattery();
+      const pct = Math.round(b.level*100);
+      const ch = b.charging ? 'charging' : 'not charging';
+      alert(`Battery: ${pct}% (${ch})`);
+      addLog(`Battery status: ${pct}% (${ch})`);
+    }catch(e){ addLog('Battery error: '+e.message); }
+  }
+
+  function deviceInfo(){
+    const ua = navigator.userAgent;
+    const plat = navigator.platform;
+    const lang = navigator.language;
+    const info = `UA: ${ua}\nPlatform: ${plat}\nLanguage: ${lang}`;
+    alert(info);
+    addLog('Device info shown');
+  }
+
+  async function keepScreenOn(){
+    try{
+      if('wakeLock' in navigator){
+        wakeLock = await navigator.wakeLock.request('screen');
+        addLog('Wake Lock active (screen on)');
+        window.addEventListener('visibilitychange', async ()=>{
+          if(document.visibilityState === 'visible' && wakeLock === null){
+            try{ wakeLock = await navigator.wakeLock.request('screen'); }catch(_){}
+          }
+        });
+      } else {
+        alert('Wake Lock API not supported in this browser');
+      }
+    }catch(e){ addLog('Wake Lock error: '+e.message); }
+  }
+  function allowSleep(){
+    if(wakeLock){ try{ wakeLock.release(); }catch(_){} wakeLock=null; addLog('Wake Lock released'); }
+  }
+
+  function vibrate(){
+    if('vibrate' in navigator){
+      navigator.vibrate([60,40,60,40,120]);
+      addLog('Vibration pattern played');
+    } else {
+      alert('Vibration not supported on this device');
+    }
+  }
+
+  function lockScreen(){
+    lockOverlay.style.display='flex';
+  }
+  function unlockScreen(){
+    lockOverlay.style.display='none';
+  }
+  unlockBtn.addEventListener('click', unlockScreen);
+
+  function openWhatsApp(){
+    try{
+      window.location.href = "intent://send/#Intent;scheme=whatsapp;package=com.whatsapp;end";
+      setTimeout(()=>window.open('https://web.whatsapp.com', '_blank'), 800);
+    }catch(_){
+      window.open('https://web.whatsapp.com', '_blank');
+    }
+    addLog('WhatsApp request');
+  }
+
+  function openGallery(){
+    window.open('https://photos.google.com', '_blank');
+    addLog('Gallery opened');
+  }
+
+  // ---------- Command router ----------
+  function handleExtraCommand(raw){
+    if(!raw) return false;
+    const lower = raw.toLowerCase().trim();
+
+    // map variants
+    if(/^(power\s*off( phone)?|shutdown( phone)?)$/.test(lower)){ powerOffAnimation(); return true; }
+    if(/^(restart( phone)?|reboot( phone)?)$/.test(lower)){ restartAnimation(); return true; }
+
+    if(/^(flashlight|torch) on$/.test(lower)){ flashlight(true); return true; }
+    if(/^(flashlight|torch) off$/.test(lower)){ flashlight(false); return true; }
+
+    if(/^open camera$/.test(lower)){ openCamera(); return true; }
+    if(/^close camera$/.test(lower)){ closeCamera(); return true; }
+
+    if(/^open whatsapp$/.test(lower)){ openWhatsApp(); return true; }
+    if(/^open gallery$/.test(lower)){ openGallery(); return true; }
+
+    if(/^battery status$/.test(lower)){ batteryStatus(); return true; }
+    if(/^device info$/.test(lower)){ deviceInfo(); return true; }
+
+    if(/^keep screen on$/.test(lower)){ keepScreenOn(); return true; }
+    if(/^allow sleep$/.test(lower)){ allowSleep(); return true; }
+
+    if(/^vibrate$/.test(lower)){ vibrate(); return true; }
+
+    if(/^lock screen$/.test(lower)){ lockScreen(); return true; }
+    if(/^unlock screen$/.test(lower)){ unlockScreen(); return true; }
+
+    return false;
+  }
+
+  // 1) Intercept typed commands BEFORE original handler (capture phase)
+  btnSend.addEventListener('click', function(e){
+    const val = (cmdInput && cmdInput.value || '').trim();
+    if(handleExtraCommand(val)){
+      // clear to prevent original handler from acting
+      if(cmdInput) cmdInput.value = '';
+      e.stopImmediatePropagation();
+      e.preventDefault();
+    }
+  }, true);
+  cmdInput.addEventListener('keydown', function(e){
+    if(e.key==='Enter'){
+      const val = (cmdInput && cmdInput.value || '').trim();
+      if(handleExtraCommand(val)){
+        if(cmdInput) cmdInput.value = '';
+        e.stopImmediatePropagation();
+        e.preventDefault();
+      }
+    }
+  }, true);
+
+  // 2) Observe transcript for "User: ..." lines produced by original code (voice path)
+  const seen = new Set();
+  const observer = new MutationObserver((muts)=>{
+    muts.forEach(m=>{
+      m.addedNodes && Array.from(m.addedNodes).forEach(node=>{
+        if(node && node.textContent && node.textContent.startsWith('User: ')){
+          const cmd = node.textContent.slice(6).trim();
+          if(!seen.has(cmd)){
+            seen.add(cmd);
+            handleExtraCommand(cmd);
+          }
+        }
+      });
+    });
+  });
+  if(transcriptEl){
+    observer.observe(transcriptEl, { childList:true });
+  }
+
+  // 3) Utility dock click → run commands
+  document.querySelectorAll('.util').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const c = card.getAttribute('data-cmd');
+      handleExtraCommand(c);
+    });
+  });
+
+})();
+</script>
+<!-- ===================== ADD-ONS END ===================== -->
 </body>
 </html>
