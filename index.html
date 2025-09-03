@@ -95,7 +95,7 @@
     <header>
       <div>
         <h1>Siri — Web Voice Assistant (Mega)</h1>
-        <div class="subtitle">Speak commands or type them. Works best in Chrome/Edge on HTTPS. No server required for most features.</div>
+        <div class="subtitle">Speak commands or type them. Works best in Chrome/Edge/App on HTTPS. No server required for most features.</div>
       </div>
       <div style="margin-left:auto;text-align:right">
         <div class="status" id="listenStatus">Idle</div>
@@ -256,7 +256,7 @@
     <div class="badge-line">Extra features (weather/news/quotes/spotify/games/camera/memory/notes/todo) added — all client-side.</div>
 
     <footer>
-      Built for you — say hi and try commands. DEVELOPED BY RUDRANSH PANDEY (A GENIUS MIND ).  
+      Built for you — say hi and try commands. DEVELOPED BY RUDRANSH PANDEY(A GENIUS MIND).  
     </footer>
   </div>
 
@@ -391,7 +391,6 @@
     "Why did the developer go broke? Because he used up all his cache.",
     "Why do programmers prefer dark mode? Because the light attracts bugs.",
     "I told my computer I needed a break, and it said — no problem, I'll go to sleep."
-    "Noob joke khtm hogya ek hi tha ... ab ja skta h tuu... chal nikal..."
   ];
   const quotes = [
     "The best time to plant a tree was 20 years ago. The second best time is now.",
@@ -489,7 +488,7 @@
         if(lw.includes('hey siri') || lw.includes('ok siri')){
           const stripped = lw.replace(/^.*?(hey siri|ok siri)[, ]*/,'').trim();
           if(stripped) handleCommand(stripped);
-          else speak('Yes Rudransh?');
+          else speak('Yes?');
           return;
         } else {
           addLog('Ignored speech (wake-word required)', 'info');
@@ -498,7 +497,7 @@
       } else {
         if(wakeWordOn){
           if(res.toLowerCase().includes('hey siri') || res.toLowerCase().includes('ok siri')){
-            speak('Yes Rudransh, I am listening');
+            speak('Yes, I am listening');
             return;
           }
           if(res.toLowerCase().startsWith('hey siri')) {
@@ -523,7 +522,7 @@
     transcriptEl.scrollTop = transcriptEl.scrollHeight;
   }
 
- /* Main command handler */
+  /* Main command handler */
   async function handleCommand(textRaw){
     const text = String(textRaw || '').trim();
     if(!text) return;
@@ -532,7 +531,7 @@
 
     // small talk
     if(/^(hi|hello|hey|hey siri)\b/.test(lower)){
-      speak('Hello Rudransh. How can I help?');
+      speak('Hello. How can I help?');
       return;
     }
 
