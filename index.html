@@ -391,6 +391,7 @@
     "Why did the developer go broke? Because he used up all his cache.",
     "Why do programmers prefer dark mode? Because the light attracts bugs.",
     "I told my computer I needed a break, and it said — no problem, I'll go to sleep."
+    "Noob joke khtm hogya ek hi tha ... ab ja skta h tuu... chal nikal..."
   ];
   const quotes = [
     "The best time to plant a tree was 20 years ago. The second best time is now.",
@@ -488,7 +489,7 @@
         if(lw.includes('hey siri') || lw.includes('ok siri')){
           const stripped = lw.replace(/^.*?(hey siri|ok siri)[, ]*/,'').trim();
           if(stripped) handleCommand(stripped);
-          else speak('Yes?');
+          else speak('Yes Rudransh?');
           return;
         } else {
           addLog('Ignored speech (wake-word required)', 'info');
@@ -497,7 +498,7 @@
       } else {
         if(wakeWordOn){
           if(res.toLowerCase().includes('hey siri') || res.toLowerCase().includes('ok siri')){
-            speak('Yes, I am listening');
+            speak('Yes Rudransh, I am listening');
             return;
           }
           if(res.toLowerCase().startsWith('hey siri')) {
@@ -531,7 +532,7 @@
 
     // small talk
     if(/^(hi|hello|hey|hey siri)\b/.test(lower)){
-      speak('Hello. How can I help?');
+      speak('Hello Rudransh. How can I help?');
       return;
     }
 
