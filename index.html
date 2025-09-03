@@ -297,55 +297,6 @@
   <canvas id="boomCanvas"></canvas>
 
 <script>
-let siriActive = false;
-
-/* --- Wake word + Commands --- */
-function handleTranscript(transcript) {
-  let lower = transcript.toLowerCase();
-
-  // Wake word
-  if (!siriActive && lower.includes("hey siri")) {
-    siriActive = true;
-    log("✅ Wake word detected: Hey Siri");
-    speak("Yes Rudransh, I'm listening...");
-    document.getElementById("listen-status").innerText = "Siri Active";
-    return;
-  }
-
-  // Commands after wake word
-  if (siriActive) {
-    if (lower.includes("open youtube")) {
-      speak("Opening YouTube...");
-      window.open("https://youtube.com", "_blank");
-    }
-    else if (lower.includes("time")) {
-      let now = new Date().toLocaleTimeString();
-      speak("The time is " + now);
-    }
-    else if (lower.includes("date")) {
-      let today = new Date().toLocaleDateString();
-      speak("Today's date is " + today);
-    }
-    else if (lower.includes("close")) {
-      speak("Okay, going back to sleep.");
-      siriActive = false;
-      document.getElementById("listen-status").innerText = "Idle";
-    }
-    else {
-      speak("Sorry Rudransh, I didn’t understand that.");
-    }
-  }
-}
-
-/* --- Recognition listener update --- */
-recognition.onresult = (event) => {
-  let transcript = event.results[event.results.length - 1][0].transcript.trim();
-  document.getElementById("transcript").innerText = transcript;
-  log("You said: " + transcript);
-
-  // 👇 Ye call zaroor hona chahiye
-  handleTranscript(transcript);
-};
   
 /* ------------------------------
    MEGA Siri Assistant - JavaScript
