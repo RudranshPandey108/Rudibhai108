@@ -3,35 +3,39 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Siri — Web Voice Assistant (Enhanced)</title>
-  <link rel="manifest" href="manifest.json">
-<script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js");
-  }
-</script>
+<title>Siri — Web Voice Assistant (Mega)</title>
+
+<!-- PWA manifest placeholder (make sure manifest.json exists at same folder) -->
+<link rel="manifest" href="manifest.json">
+
 <style>
+  /* ----------------------------
+     MEGA Siri UI - dark theme
+     ---------------------------- */
   :root{
-    --bg:#0f1720; --card:#0b1220; --muted:#94a3b8; --accent:#22c55e; --accent2:#60a5fa;
+    --bg:#07111a; --card:#071622; --muted:#94a3b8; --accent:#22c55e; --accent2:#60a5fa;
     --glass: rgba(255,255,255,0.03);
+    --danger: #ff6b6b;
+    --success: #9ae6b4;
   }
-  html,body{height:100%; margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:linear-gradient(180deg,#07111a 0%, #08131a 100%); color:#e6eef8}
-  .wrap{max-width:1100px; margin:18px auto; padding:18px;}
-  header{display:flex;align-items:center;gap:16px}
-  h1{font-size:20px;margin:0}
+  html,body{height:100%; margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background: radial-gradient(1200px 600px at 10% 10%, rgba(12,20,30,0.6), transparent), linear-gradient(180deg,#04101a 0%, #07111a 100%); color:#e6eef8; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;}
+  .wrap{max-width:1200px; margin:20px auto; padding:18px;}
+  header{display:flex;align-items:center;gap:14px}
+  header h1{font-size:20px;margin:0;letter-spacing:0.6px}
   .subtitle{color:var(--muted); font-size:13px}
-  .controls{display:flex;gap:8px; margin-top:14px; flex-wrap:wrap}
+  .controls{display:flex;gap:8px; margin-top:14px; flex-wrap:wrap; align-items:center}
   button{background:var(--card); color:inherit;border:1px solid rgba(255,255,255,0.03); padding:10px 12px; border-radius:8px; cursor:pointer}
   button.primary{background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#022; font-weight:700}
   .panel{margin-top:18px; display:grid; grid-template-columns: 1fr 420px; gap:16px}
-  .card{background:var(--glass); border-radius:10px; padding:14px; box-shadow:0 6px 24px rgba(2,6,23,0.6); border:1px solid rgba(255,255,255,0.03)}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:10px; padding:14px; box-shadow:0 6px 24px rgba(2,6,23,0.6); border:1px solid rgba(255,255,255,0.03)}
   #left {min-height:520px}
   #right {min-height:520px}
-  #transcript{min-height:160px; background: rgba(255,255,255,0.02); padding:10px; border-radius:8px; color:#dff0d8; overflow:auto}
+  #transcript{min-height:160px; background: rgba(255,255,255,0.02); padding:10px; border-radius:8px; color:#dff0d8; overflow:auto; max-height:360px}
   #log{height:260px; overflow:auto; font-size:13px; color:var(--muted); background: rgba(255,255,255,0.01); padding:8px; border-radius:6px}
   .row{display:flex; gap:8px; align-items:center}
   label{font-size:13px;color:var(--muted)}
-  input[type="text"]{flex:1; padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03); background:transparent; color:inherit}
+  input[type="text"], textarea{flex:1; padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.03); background:transparent; color:inherit}
+  textarea{min-height:100px; resize:vertical}
   .hint{font-size:12px;color:var(--muted); margin-top:8px}
   .smallbtn{padding:6px 8px; font-size:13px}
   .status{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.03); color:var(--muted); font-size:13px}
@@ -41,21 +45,21 @@
   .kbd{background:#071827;padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04); font-weight:700}
   .muted{color:var(--muted)}
   .utility-dock{
-    max-width:1100px; margin: 12px auto 22px; padding:12px;
+    max-width:1200px; margin: 12px auto 22px; padding:12px;
     display:grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap:10px;
   }
-  .util{ background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); color:#e6eef8; padding:12px; border-radius:12px; text-align:center; font-size:14px; cursor:pointer }
+  .util{ background: rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); color:#e6eef8; padding:12px; border-radius:12px; text-align:center; font-size:14px; cursor:pointer; transition:all .14s ease }
+  .util:hover{ transform: translateY(-4px); box-shadow:0 10px 30px rgba(2,6,23,0.5) }
   .util small{ display:block; color:#94a3b8; font-size:12px; margin-top:4px }
   /* overlays */
   .overlay {
     position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 9999;
-    color: #fff; font-family: inherit;
+    color: #fff; font-family: inherit; flex-direction:column;
   }
-  #powerOverlay { background: rgba(0,0,0,0.98); flex-direction: column; gap:18px; }
+  #powerOverlay { background: rgba(0,0,0,0.98); gap:18px; padding:20px; text-align:center; }
   #powerSpinner { width:64px;height:64px;border-radius:50%; border:6px solid rgba(255,255,255,0.12); border-top-color:#fff; animation: spin 1s linear infinite}
   @keyframes spin { to{ transform: rotate(360deg);} }
-
-  #cameraOverlay { background: rgba(0,0,0,0.94); color:#fff; flex-direction: column; gap:10px; }
+  #cameraOverlay { background: rgba(0,0,0,0.94); color:#fff; gap:10px; padding:14px; }
   #cameraView { width:min(92vw,960px); height: min(70vh,520px); background:#000; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.06) }
   #cameraView video{ width:100%; height:100%; object-fit:cover }
   .overlayTopBar{
@@ -64,24 +68,34 @@
     padding:8px 12px; border:1px solid rgba(255,255,255,0.06); border-radius:999px; z-index:10000; color:#fff
   }
   .overlayTopBar button{ background:transparent; border:1px solid rgba(255,255,255,0.12); color:#fff; padding:8px 10px; border-radius:999px; cursor:pointer }
-  #lockOverlay{ background: rgba(0,0,0,0.9); color:#fff; flex-direction:column; gap:12px; text-align:center }
+  #lockOverlay{ background: rgba(0,0,0,0.9); color:#fff; gap:12px; text-align:center; padding:20px }
   #flashlightOverlay{ background:#ffffff; display:none } /* white screen to simulate torch */
   .badge-line{ text-align:center; color:#94a3b8; font-size:12px; margin-bottom:18px }
-  /* self destruct */
-  #boomCanvas { position: fixed; inset:0; pointer-events:none; z-index:11000; display:none }
+  /* self destruct / glitch */
+  #glitchOverlay { position: fixed; inset:0; pointer-events:none; z-index:11000; display:none; }
+  .glitchText{
+    font-size:38px; font-weight:900; letter-spacing:6px; text-transform:uppercase;
+    color:var(--danger); text-align:center; filter:drop-shadow(0 10px 30px rgba(255,0,0,0.06));
+  }
   .hidden{ display:none !important; }
-  /* voice select */
-  select.verysmall{ padding:6px; border-radius:6px; background:var(--card); color:inherit; border:1px solid rgba(255,255,255,0.03) }
+  #boomCanvas { position: fixed; inset:0; pointer-events:none; z-index:11050; display:none; }
+  /* self destruct countdown panel */
+  #countdownBox{ background: rgba(0,0,0,0.85); padding:18px 22px; border-radius:12px; border:1px solid rgba(255,255,255,0.06); text-align:center }
+  #countdownTime{ font-size:46px; font-weight:800; color:var(--danger); margin-top:6px; }
+  /* notes/todo */
+  .panelSplit{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px }
+  .noteCard{ background: rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.03) }
   /* responsive */
-  @media (max-width:980px){ .panel{grid-template-columns:1fr} #right{order:2} }
+  @media (max-width:1080px){ .panel{grid-template-columns:1fr 360px} }
+  @media (max-width:980px){ .panel{grid-template-columns:1fr} #right{order:2} .panelSplit{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
   <div class="wrap">
     <header>
       <div>
-        <h1>Siri — Web Voice Assistant</h1>
-        <div class="subtitle">Speak commands or type them. Works in Chrome/Edge. No server required.</div>
+        <h1>Siri — Web Voice Assistant (Mega)</h1>
+        <div class="subtitle">Speak commands or type them. Works best in Chrome/Edge on HTTPS. No server required for most features.</div>
       </div>
       <div style="margin-left:auto;text-align:right">
         <div class="status" id="listenStatus">Idle</div>
@@ -96,14 +110,18 @@
       <button id="btnWake">Wake-word: <span id="wakeState">Off</span></button>
       <button id="btnToggleVoice">Toggle Voice Reply</button>
       <button id="btnClearLog" class="smallbtn">Clear Log</button>
-      <select id="langSelect" class="verysmall">
+
+      <select id="langSelect" class="verysmall" title="Recognition language">
         <option value="en-US">English (en-US)</option>
         <option value="hi-IN">Hindi (hi-IN)</option>
       </select>
+
       <label style="margin-left:8px;color:var(--muted)">Voice:</label>
       <select id="voiceSelect" class="verysmall"></select>
+
       <button id="btnSaveMemory" title="Save memory (e.g. remember my birthday)">💾 Save Memory</button>
       <button id="btnShowMemory" title="Show saved memories">🗂️ Memories</button>
+      <button id="btnInstall" class="smallbtn" title="Install as app (PWA)">Install App</button>
     </div>
 
     <div class="panel">
@@ -116,7 +134,7 @@
           <button id="btnSend" class="smallbtn">Send</button>
         </div>
 
-        <div class="hint">Tip: Say <b>"Hey Siri"</b> to activate when wake-word is ON. Try: <em>open youtube, search weather Chennai, time, wiki Tesla, calculate 12*8, set timer 10 seconds</em></div>
+        <div class="hint">Tip: Say <b>"Hey Siri"</b> (if wake-word ON). Try: <em>open youtube, search weather Chennai, time, wiki Tesla, calculate 12*8, set timer 10 seconds, remember my password</em></div>
 
         <div style="margin-top:12px">
           <strong>Quick commands</strong>
@@ -150,11 +168,48 @@
         <hr style="border-color: rgba(255,255,255,0.04); margin:14px 0">
 
         <div style="margin-top:8px">
-          <strong>Games</strong>
+          <strong>Games & Tools</strong>
           <div class="row" style="margin-top:8px; gap:8px; flex-wrap:wrap">
             <button id="btnRPS" class="smallbtn">Rock Paper Scissors</button>
             <button id="btnGuess" class="smallbtn">Guess Number</button>
+            <button id="btnNotes" class="smallbtn">Notes</button>
+            <button id="btnTodo" class="smallbtn">To-Do</button>
           </div>
+
+          <div id="notesArea" class="hidden" style="margin-top:12px">
+            <div class="panelSplit">
+              <div class="noteCard">
+                <h4 style="margin:6px 0">Quick Note</h4>
+                <textarea id="noteText" placeholder="Write a quick note..."></textarea>
+                <div style="margin-top:8px" class="row">
+                  <button id="saveNote" class="smallbtn">Save Note</button>
+                  <button id="clearNote" class="smallbtn">Clear</button>
+                </div>
+              </div>
+              <div class="noteCard">
+                <h4 style="margin:6px 0">Saved Notes</h4>
+                <div id="notesList" style="max-height:150px; overflow:auto"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="todoArea" class="hidden" style="margin-top:12px">
+            <div class="panelSplit">
+              <div class="noteCard">
+                <h4 style="margin:6px 0">Add To-Do</h4>
+                <input id="todoInput" placeholder="Task..." />
+                <div style="margin-top:8px" class="row">
+                  <button id="addTodo" class="smallbtn">Add</button>
+                  <button id="clearTodos" class="smallbtn">Clear Done</button>
+                </div>
+              </div>
+              <div class="noteCard">
+                <h4 style="margin:6px 0">Tasks</h4>
+                <div id="todoList" style="max-height:150px; overflow:auto"></div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
       </div>
@@ -176,14 +231,14 @@
           <label>Wake-word required:</label>
           <input type="checkbox" id="chkWakeReq" />
         </div>
-        <div style="margin-top:10px" class="muted">Supported in Chrome/Edge. Safari support is limited.</div>
+        <div style="margin-top:10px" class="muted">Supported in Chrome/Edge. Some features require HTTPS and permissions (camera, mic, wake-lock).</div>
       </div>
     </div>
 
     <div class="utility-dock">
-      <div class="util" data-cmd="power off phone">Power Off<small>voice: power off phone</small></div>
-      <div class="util" data-cmd="restart phone">Restart<small>voice: restart phone</small></div>
-      <div class="util" data-cmd="flashlight on">Flashlight On<small>torch on</small></div>
+      <div class="util" data-cmd="power off phone">Power Off<small>Simulated</small></div>
+      <div class="util" data-cmd="restart phone">Restart<small>Simulated</small></div>
+      <div class="util" data-cmd="flashlight on">Flashlight On<small>Simulated</small></div>
       <div class="util" data-cmd="flashlight off">Flashlight Off</div>
       <div class="util" data-cmd="open camera">Open Camera</div>
       <div class="util" data-cmd="close camera">Close Camera</div>
@@ -198,10 +253,10 @@
       <div class="util" data-cmd="unlock screen">Unlock Screen</div>
     </div>
 
-    <div class="badge-line">Extra features (weather/news/quotes/spotify/games/camera/memory) added — all client-side.</div>
+    <div class="badge-line">Extra features (weather/news/quotes/spotify/games/camera/memory/notes/todo) added — all client-side.</div>
 
     <footer>
-      Built for you — say hi and try commands. DEVELOPED BY RUDRANSH PANDEY (A GENIUS).  
+      Built for you — say hi and try commands. DEVELOPED BY (Your Web Assistant).  
     </footer>
   </div>
 
@@ -210,6 +265,7 @@
     <div id="powerSpinner"></div>
     <div id="powerLogo" style="font-size:22px; letter-spacing:4px; opacity:0.95">S H U T T I N G &nbsp; D O W N</div>
     <div id="restartText" style="font-size:14px; opacity:0.9"></div>
+    <button id="powerCancel" class="smallbtn">Cancel</button>
   </div>
 
   <div id="flashlightOverlay" class="overlay" style="display:none"></div>
@@ -224,858 +280,1048 @@
     <div class="overlayTopBar">
       <button id="btnCloseCamera">Close</button>
       <button id="btnSwitchCamera">Switch</button>
+      <button id="btnSnap" title="Take snapshot">Snapshot</button>
     </div>
     <div id="cameraView"><video id="camVideo" autoplay playsinline muted></video></div>
   </div>
 
+  <div id="glitchOverlay" class="overlay" style="pointer-events:none">
+    <div id="countdownBox">
+      <div class="glitchText">SELF DESTRUCT</div>
+      <div id="countdownTime">10</div>
+      <div style="margin-top:8px;color:var(--muted)">Say "abort" to cancel or click Cancel</div>
+      <div style="margin-top:12px"><button id="abortSelf" class="smallbtn">Abort</button></div>
+    </div>
+  </div>
+
   <canvas id="boomCanvas"></canvas>
 
-  <script>
-  /* ------------------------------
-     Core Siri assistant (kept same + extended)
-     - SpeechRecognition & SpeechSynthesis
-     - Commands: open/search/wiki/calc/timer/music/joke etc.
-     - Added more command handlers and hooks to add-ons
-     ------------------------------ */
-  (function(){
-    // Feature detection
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const synth = window.speechSynthesis;
+<script>
+/* ------------------------------
+   MEGA Siri Assistant - JavaScript
+   - Recognition + Synthesis
+   - Extras: notes, todo, camera, screenshot, wake-lock, battery, PWA install hook
+   - Fixed self-destruct with countdown + canvas explosion
+   ------------------------------ */
 
-    // UI elements
-    const btnStart = document.getElementById('btnStart');
-    const btnStop = document.getElementById('btnStop');
-    const btnWake = document.getElementById('btnWake');
-    const btnToggleVoice = document.getElementById('btnToggleVoice');
-    const btnClearLog = document.getElementById('btnClearLog');
-    const langSelect = document.getElementById('langSelect');
-    const langLabel = document.getElementById('langLabel');
-    const listenStatus = document.getElementById('listenStatus');
-    const transcriptEl = document.getElementById('transcript');
-    const cmdInput = document.getElementById('cmdInput');
-    const btnSend = document.getElementById('btnSend');
-    const logEl = document.getElementById('log');
-    const chkVoice = document.getElementById('chkVoice');
-    const chkContinuous = document.getElementById('chkContinuous');
-    const wakeStateSpan = document.getElementById('wakeState');
-    const chkWakeReq = document.getElementById('chkWakeReq');
-    const voiceSelect = document.getElementById('voiceSelect');
-    const btnSaveMemory = document.getElementById('btnSaveMemory');
-    const btnShowMemory = document.getElementById('btnShowMemory');
+(function(){
+  /* Feature detection */
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  const synth = window.speechSynthesis || null;
 
-    // Add-on anchors (buttons)
-    const btnWeather = document.getElementById('btnWeather');
-    const btnNews = document.getElementById('btnNews');
-    const btnQuote = document.getElementById('btnQuote');
-    const btnSpotify = document.getElementById('btnSpotify');
-    const btnTranslate = document.getElementById('btnTranslate');
-    const btnScreenshot = document.getElementById('btnScreenshot');
-    const btnSelfDestruct = document.getElementById('btnSelfDestruct');
-    const btnRPS = document.getElementById('btnRPS');
-    const btnGuess = document.getElementById('btnGuess');
+  /* UI refs */
+  const btnStart = document.getElementById('btnStart');
+  const btnStop = document.getElementById('btnStop');
+  const btnWake = document.getElementById('btnWake');
+  const btnToggleVoice = document.getElementById('btnToggleVoice');
+  const btnClearLog = document.getElementById('btnClearLog');
+  const langSelect = document.getElementById('langSelect');
+  const langLabel = document.getElementById('langLabel');
+  const listenStatus = document.getElementById('listenStatus');
+  const transcriptEl = document.getElementById('transcript');
+  const cmdInput = document.getElementById('cmdInput');
+  const btnSend = document.getElementById('btnSend');
+  const logEl = document.getElementById('log');
+  const chkVoice = document.getElementById('chkVoice');
+  const chkContinuous = document.getElementById('chkContinuous');
+  const wakeStateSpan = document.getElementById('wakeState');
+  const chkWakeReq = document.getElementById('chkWakeReq');
+  const voiceSelect = document.getElementById('voiceSelect');
+  const btnSaveMemory = document.getElementById('btnSaveMemory');
+  const btnShowMemory = document.getElementById('btnShowMemory');
+  const btnInstall = document.getElementById('btnInstall');
 
-    // overlays
-    const powerOverlay = document.getElementById('powerOverlay');
-    const restartText = document.getElementById('restartText');
-    const flashlightOverlay = document.getElementById('flashlightOverlay');
-    const lockOverlay = document.getElementById('lockOverlay');
-    const unlockBtn = document.getElementById('unlockBtn');
-    const cameraOverlay = document.getElementById('cameraOverlay');
-    const camVideo = document.getElementById('camVideo');
-    const btnCloseCamera = document.getElementById('btnCloseCamera');
-    const btnSwitchCamera = document.getElementById('btnSwitchCamera');
-    const boomCanvas = document.getElementById('boomCanvas');
+  const btnWeather = document.getElementById('btnWeather');
+  const btnNews = document.getElementById('btnNews');
+  const btnQuote = document.getElementById('btnQuote');
+  const btnSpotify = document.getElementById('btnSpotify');
+  const btnTranslate = document.getElementById('btnTranslate');
+  const btnScreenshot = document.getElementById('btnScreenshot');
+  const btnSelfDestruct = document.getElementById('btnSelfDestruct');
+  const btnRPS = document.getElementById('btnRPS');
+  const btnGuess = document.getElementById('btnGuess');
+  const btnNotes = document.getElementById('btnNotes');
+  const btnTodo = document.getElementById('btnTodo');
 
-    // State
-    let recognition = null;
-    let listening = false;
-    let wakeWordOn = false;
-    let lastTranscript = '';
-    let lang = 'en-US';
-    let continuous = false;
-    let camStream = null;
-    let usingBackCam = true;
-    let wakeRequired = false;
+  // overlays
+  const powerOverlay = document.getElementById('powerOverlay');
+  const restartText = document.getElementById('restartText');
+  const powerCancel = document.getElementById('powerCancel');
+  const flashlightOverlay = document.getElementById('flashlightOverlay');
+  const lockOverlay = document.getElementById('lockOverlay');
+  const unlockBtn = document.getElementById('unlockBtn');
+  const cameraOverlay = document.getElementById('cameraOverlay');
+  const camVideo = document.getElementById('camVideo');
+  const btnCloseCamera = document.getElementById('btnCloseCamera');
+  const btnSwitchCamera = document.getElementById('btnSwitchCamera');
+  const btnSnap = document.getElementById('btnSnap');
+  const boomCanvas = document.getElementById('boomCanvas');
 
-    // small datasets
-    const jokes = [
-      "Why did the developer go broke? Because he used up all his cache.",
-      "Why do programmers prefer dark mode? Because the light attracts bugs.",
-      "I told my computer I needed a break, and it said — no problem, I'll go to sleep."
-    ];
-    const quotes = [
-      "The best time to plant a tree was 20 years ago. The second best time is now.",
-      "Don't watch the clock; do what it does. Keep going.",
-      "You don't have to be great to start, but you have to start to be great."
-    ];
+  const glitchOverlay = document.getElementById('glitchOverlay');
+  const countdownTime = document.getElementById('countdownTime');
+  const abortSelfBtn = document.getElementById('abortSelf');
 
-    // Logging helper
-    function log(message, type='info'){
-      const time = new Date().toLocaleTimeString();
-      const el = document.createElement('div');
-      el.innerHTML = `<strong style="color:#9ae6b4">${time}</strong> — <span style="color:${type==='err'?'#ff7b7b':'#cfe8ff'}">${escapeHtml(message)}</span>`;
-      logEl.prepend(el);
-    }
-    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
+  // notes/todo
+  const notesArea = document.getElementById('notesArea');
+  const noteText = document.getElementById('noteText');
+  const saveNoteBtn = document.getElementById('saveNote');
+  const notesListEl = document.getElementById('notesList');
 
-    // Speak helper with voice selection
-    let availableVoices = [];
-    function populateVoices(){
-      availableVoices = synth.getVoices() || [];
-      voiceSelect.innerHTML = '';
-      availableVoices.forEach((v, i) => {
-        const opt = document.createElement('option');
-        opt.value = i;
-        opt.textContent = `${v.name} — ${v.lang} ${v.default ? '(default)' : ''}`;
-        voiceSelect.appendChild(opt);
-      });
-    }
-    if(synth) {
-      populateVoices();
-      if(typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = populateVoices;
-      }
-    }
-    function speak(text, opts = {}){
-      if(!chkVoice.checked) return;
-      if(!synth) return;
-      try {
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = opts.lang || lang;
-        u.rate = opts.rate || 1.0;
-        u.pitch = opts.pitch || 1.0;
-        if(voiceSelect.value && availableVoices[voiceSelect.value]) u.voice = availableVoices[voiceSelect.value];
-        synth.cancel(); // stop previous
-        synth.speak(u);
-        log('Siri: ' + text);
-      } catch (e) {
-        console.error('synth error', e);
-      }
-    }
+  const todoArea = document.getElementById('todoArea');
+  const todoInput = document.getElementById('todoInput');
+  const addTodoBtn = document.getElementById('addTodo');
+  const todoListEl = document.getElementById('todoList');
+  const clearTodosBtn = document.getElementById('clearTodos');
 
-    // Recognition setup
-    function setupRecognition(){
-      if(!SpeechRecognition) {
-        listenStatus.textContent = 'SpeechRecognition not supported';
-        btnStart.disabled = true; btnStop.disabled = true;
-        return;
-      }
-      recognition = new SpeechRecognition();
-      recognition.lang = lang;
-      recognition.interimResults = false;
-      recognition.continuous = chkContinuous.checked;
-      recognition.maxAlternatives = 1;
+  /* State */
+  let recognition = null;
+  let listening = false;
+  let wakeWordOn = false;
+  let lastTranscript = '';
+  let lang = langSelect.value || 'en-US';
+  let camStream = null;
+  let usingBackCam = true;
+  let wakeLock = null;
+  let installPromptEvent = null;
+  let availableVoices = [];
 
-      recognition.onstart = () => {
-        listening = true;
-        listenStatus.textContent = 'Listening...';
-        btnStart.textContent = 'Listening';
-        log('Voice recognition started');
-      };
+  /* small datasets */
+  const jokes = [
+    "Why did the developer go broke? Because he used up all his cache.",
+    "Why do programmers prefer dark mode? Because the light attracts bugs.",
+    "I told my computer I needed a break, and it said — no problem, I'll go to sleep."
+  ];
+  const quotes = [
+    "The best time to plant a tree was 20 years ago. The second best time is now.",
+    "Don't watch the clock; do what it does. Keep going.",
+    "You don't have to be great to start, but you have to start to be great."
+  ];
 
-      recognition.onend = () => {
-        listening = false;
-        listenStatus.textContent = 'Idle';
-        btnStart.textContent = 'Start Listening';
-        log('Voice recognition stopped', 'info');
-        if(chkContinuous.checked && recognition){
-          setTimeout(()=> { try{ recognition.start() } catch(e){} }, 250);
-        }
-      };
+  /* Helpers */
+  function addLog(message, type='info'){
+    const time = new Date().toLocaleTimeString();
+    const el = document.createElement('div');
+    el.style.marginTop = '6px';
+    el.innerHTML = `<strong style="color:${type==='err'?'#ff7b7b':'#9ae6b4'}">${time}</strong> — <span style="color:${type==='err'?'#ffb3b3':'#cfe8ff'}">${escapeHtml(message)}</span>`;
+    logEl.prepend(el);
+  }
+  function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
 
-      recognition.onerror = (ev) => {
-        log('Speech error: ' + ev.error, 'err');
-      };
-
-      recognition.onresult = (ev) => {
-        const res = ev.results[ev.results.length - 1][0].transcript.trim();
-        lastTranscript = res;
-        transcriptEl.textContent = 'Heard: "' + res + '"';
-        log('Heard: ' + res);
-        // respect wake-word toggle / required setting:
-        if(chkWakeReq.checked){
-          // if wake-word required, only accept when phrase includes wake word or starts with it
-          const lw = res.toLowerCase();
-          if(lw.includes('hey siri') || lw.includes('ok siri')){
-            // if command is contained after wake phrase, strip and handle
-            const stripped = lw.replace(/^.*?(hey siri|ok siri)[, ]*/,'').trim();
-            if(stripped) handleCommand(stripped);
-            else { speak('Yes?'); }
-            return;
-          } else {
-            log('Ignored — wake-word required', 'info');
-            return;
-          }
-        } else {
-          // If wake-word mode (button) is ON but not required, respond to wake word specially
-          if(wakeWordOn){
-            if(res.toLowerCase().includes('hey siri') || res.toLowerCase().includes('ok siri')){
-              speak('Yes, I am listening');
-              return;
-            }
-            // if phrase starts with wake word, strip & handle
-            if(res.toLowerCase().startsWith('hey siri')) {
-              const cmd = res.toLowerCase().replace(/^hey siri[, ]*/,'').trim();
-              if(cmd) handleCommand(cmd);
-              return;
-            }
-          }
-          handleCommand(res);
-        }
-      };
-    }
-
-    // Main command handler (keeps original behavior + extras)
-    async function handleCommand(textRaw){
-      const text = textRaw.trim();
-      if(!text) return;
-      addTranscriptEntry('User: ' + text);
-      const lower = text.toLowerCase();
-
-      // small talk
-      if(/^(hi|hello|hey|hey siri)\b/.test(lower)){
-        speak('Hello ' + (currentUserName() || '') + '. How can I help?');
-        addTranscriptEntry('Siri: greeting');
-        return;
-      }
-      // time/date
-      if(lower.includes('time')) {
-        const now = new Date();
-        const out = `It is ${now.toLocaleTimeString()}`;
-        speak(out);
-        addTranscriptEntry('Siri: ' + out);
-        return;
-      }
-      if(lower.includes('date')) {
-        const now = new Date();
-        const out = `Today is ${now.toLocaleDateString()}`;
-        speak(out);
-        addTranscriptEntry('Siri: ' + out);
-        return;
-      }
-      // open website common
-      if(lower.match(/\bopen (youtube|google|wikipedia|github|spotify)\b/)) {
-        let site = 'https://google.com';
-        if(lower.includes('youtube')) site = 'https://youtube.com';
-        else if(lower.includes('wikipedia')) site = 'https://wikipedia.org';
-        else if(lower.includes('github')) site = 'https://github.com';
-        else if(lower.includes('spotify')) site = 'https://open.spotify.com';
-        speak('Opening ' + site.replace(/^https?:\/\//,''));
-        window.open(site, '_blank');
-        addTranscriptEntry('Siri: opening ' + site);
-        return;
-      }
-      // search
-      if(lower.startsWith('search ') || lower.startsWith('google ')) {
-        const q = text.replace(/^(search|google)\s+/i,'').trim();
-        if(!q){ speak('What do you want me to search?'); return; }
-        speak('Searching Google for ' + q);
-        const url = 'https://www.google.com/search?q=' + encodeURIComponent(q);
-        window.open(url, '_blank');
-        addTranscriptEntry('Siri: searched for ' + q);
-        return;
-      }
-      // wiki
-      if(lower.startsWith('wiki ') || lower.startsWith('wikipedia ')) {
-        const term = text.replace(/^(wiki|wikipedia)\s+/i,'').trim();
-        if(!term){ speak('What do you want from Wikipedia?'); return; }
-        speak('Searching Wikipedia for ' + term);
-        addTranscriptEntry('Siri: fetching wikipedia for ' + term);
-        try {
-          const api = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(term);
-          const r = await fetch(api);
-          if(!r.ok) { speak('No Wikipedia page found for ' + term); return; }
-          const j = await r.json();
-          const extract = j.extract ? j.extract.split('. ').slice(0,2).join('. ') + '.' : 'No summary available.';
-          speak(extract);
-          addTranscriptEntry('Wiki: ' + extract);
-        } catch (e) {
-          speak('Failed to fetch Wikipedia.');
-          addTranscriptEntry('Wiki error: ' + e.message, 'err');
-        }
-        return;
-      }
-      // calculate
-      if(lower.startsWith('calculate ') || lower.startsWith('what is ') || /^[0-9\+\-\*\/\. ]+$/.test(lower)) {
-        const expr = text.replace(/^(calculate|what is)\s+/i,'').replace(/[^0-9+\-*/(). %]/g,'');
-        if(!expr){ speak('I could not parse the expression'); return; }
-        try {
-          const val = Function('"use strict";return (' + expr + ')')();
-          speak('The result is ' + val);
-          addTranscriptEntry('Calc: ' + expr + ' = ' + val);
-        } catch (e) {
-          speak('Sorry, cannot calculate that.');
-          addTranscriptEntry('Calc error: ' + e.message, 'err');
-        }
-        return;
-      }
-      // timer / reminder
-      if(lower.startsWith('set timer') || lower.startsWith('timer ')) {
-        const m = lower.match(/(\d+)\s*(seconds|second|minutes|minute|secs|mins)?/);
-        if(!m){ speak('Please tell me the time in seconds or minutes'); return; }
-        let num = parseInt(m[1],10);
-        let unit = (m[2]||'seconds').toLowerCase();
-        let ms = (unit.startsWith('min')) ? num * 60 * 1000 : num * 1000;
-        speak('Timer set for ' + num + ' ' + (unit.startsWith('min') ? 'minutes' : 'seconds'));
-        addTranscriptEntry('Timer: ' + num + ' ' + unit);
-        setTimeout(()=>{
-          speak('Timer finished: ' + num + ' ' + (unit.startsWith('min') ? 'minutes' : 'seconds'));
-          alert('Timer finished: ' + num + ' ' + unit);
-        }, ms);
-        return;
-      }
-      // play music -> spotify or youtube
-      if(lower.includes('play music') || lower.includes('play song') || lower.includes('play spotify')) {
-        speak('Opening Spotify playlist');
-        window.open('https://open.spotify.com', '_blank');
-        return;
-      }
-      // jokes
-      if(lower.includes('joke')) {
-        const j = jokes[Math.floor(Math.random()*jokes.length)];
-        speak(j);
-        addTranscriptEntry('Joke: ' + j);
-        return;
-      }
-      // motivational quote
-      if(lower.includes('motivate') || lower.includes('motivation') || lower.includes('quote')) {
-        const q = quotes[Math.floor(Math.random()*quotes.length)];
-        speak(q);
-        addTranscriptEntry('Quote: ' + q);
-        return;
-      }
-      // weather quick (open wttr or ask)
-      if(lower.includes('weather')) {
-        // try to parse "weather in CITY"
-        const m = lower.match(/weather in ([a-zA-Z\s]+)/);
-        const q = m ? m[1].trim() : '';
-        if(q) {
-          speak('Opening weather for ' + q);
-          window.open('https://wttr.in/' + encodeURIComponent(q), '_blank');
-        } else {
-          speak('Opening weather report');
-          window.open('https://wttr.in/?format=3', '_blank');
-        }
-        return;
-      }
-      // translate -> open google translate
-      if(lower.startsWith('translate ')) {
-        const m = text.match(/^translate\s+(.+?)\s+to\s+([a-zA-Z\-]+)/i);
-        if(m){
-          const phrase = m[1]; const target = m[2];
-          speak('Translating to ' + target);
-          window.open('https://translate.google.com/?sl=auto&tl='+encodeURIComponent(target)+'&text='+encodeURIComponent(phrase)+'&op=translate', '_blank');
-          return;
-        } else {
-          speak('Opening Google Translate');
-          window.open('https://translate.google.com', '_blank');
-          return;
-        }
-      }
-      // open apps / utilities
-      const openMatch = lower.match(/^open (https?:\/\/\S+|\S+\.\S{2,})$/);
-      if(openMatch) {
-        const target = openMatch[1].startsWith('http') ? openMatch[1] : 'https://' + openMatch[1];
-        speak('Opening ' + target);
-        window.open(target, '_blank');
-        return;
-      }
-      // stop listening / exit
-      if(lower.includes('stop listening') || lower.includes('stop') || lower.includes('exit')) {
-        speak('Stopping voice recognition');
-        stopListening();
-        return;
-      }
-      // physics wallah quick
-      if(lower.includes("physics wallah") || lower.includes("open pw") || lower.includes("play pw")){
-        speak("Opening Physics Wallah");
-        // try app intent, fallback to website
-        try{ window.location.href = "intent://#Intent;package=in.eduwall.pwclassroom;scheme=pw;end"; }catch(_){}
-        setTimeout(()=> window.open("https://www.pw.live/", "_blank"), 800);
-        return;
-      }
-      // memory (save/recall)
-      if(lower.startsWith('remember ')){
-        // store phrase after "remember"
-        const mem = text.replace(/^remember\s+/i,'').trim();
-        if(mem){
-          const mems = JSON.parse(localStorage.getItem('siri_mems')||'[]');
-          mems.push({text:mem, time: Date.now()});
-          localStorage.setItem('siri_mems', JSON.stringify(mems));
-          speak('Done. I will remember: ' + mem);
-          addTranscriptEntry('Memory saved: ' + mem);
-        } else speak('What should I remember?');
-        return;
-      }
-      if(lower.startsWith('what did i ask you to remember') || lower.startsWith('what do you remember') || lower.startsWith('list memories')){
-        const mems = JSON.parse(localStorage.getItem('siri_mems')||'[]');
-        if(mems.length===0){ speak('You have no saved memories.'); return; }
-        speak('You asked me to remember '+ mems.length + ' items. Opening memory list.');
-        showMemories();
-        return;
-      }
-      // screenshot (uses html2canvas)
-      if(lower.includes('screenshot') || lower.includes('screen shot') || lower.includes('capture screen')){
-        takeScreenshot();
-        return;
-      }
-
-      // fallback: ask to search
-      speak('I did not understand. Do you want me to search the web for ' + text + '?');
-      if(confirm('Search web for "' + text + '"?')) {
-        window.open('https://www.google.com/search?q=' + encodeURIComponent(text), '_blank');
-      }
-    }
-
-    // Transcript helper
-    function addTranscriptEntry(txt, type='sys'){
-      const p = document.createElement('div');
-      p.style.marginTop = '8px';
-      p.style.fontSize = '14px';
-      p.style.color = (type==='err' ? '#ffb3b3' : '#dbeafe');
-      p.textContent = txt;
-      transcriptEl.appendChild(p);
-      transcriptEl.scrollTop = transcriptEl.scrollHeight;
-    }
-
-    // Controls events
-    btnStart.addEventListener('click', () => {
-      if(!recognition) setupRecognition();
-      if(recognition && !listening){
-        try { recognition.start(); } catch(e){ console.warn(e); }
-      }
+  /* Speech synthesis: populate voices */
+  function populateVoices(){
+    if(!synth) return;
+    availableVoices = synth.getVoices() || [];
+    voiceSelect.innerHTML = '';
+    availableVoices.forEach((v, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `${v.name} — ${v.lang} ${v.default ? '(default)' : ''}`;
+      voiceSelect.appendChild(opt);
     });
-    btnStop.addEventListener('click', stopListening);
-
-    btnWake.addEventListener('click', ()=> {
-      wakeWordOn = !wakeWordOn;
-      wakeStateSpan.textContent = wakeWordOn ? 'On' : 'Off';
-      log('Wake-word announce ' + (wakeWordOn ? 'enabled' : 'disabled'));
-    });
-
-    btnToggleVoice.addEventListener('click', ()=> {
-      chkVoice.checked = !chkVoice.checked;
-      log('Voice reply ' + (chkVoice.checked ? 'enabled' : 'disabled'));
-    });
-
-    btnClearLog.addEventListener('click', ()=> { logEl.innerHTML=''; transcriptEl.innerHTML=''; });
-
-    chkContinuous.addEventListener('change', ()=>{
-      if(recognition){
-        recognition.stop();
-        recognition = null;
-        setupRecognition();
-      }
-      log('Continuous: ' + chkContinuous.checked);
-    });
-
-    langSelect.addEventListener('change', ()=> {
-      lang = langSelect.value;
-      langLabel.textContent = (lang==='hi-IN' ? 'Hindi (hi-IN)' : 'English (en-US)');
-      if(recognition){
-        recognition.lang = lang;
-      }
-      log('Language set to ' + lang);
-    });
-
-    btnSend.addEventListener('click', ()=> {
-      const text = cmdInput.value.trim();
-      if(!text) return;
-      // first run extra handlers (add-ons) — they can intercept (see later)
-      handleExtraCommand(text) || handleCommand(text);
-      cmdInput.value='';
-    });
-
-    cmdInput.addEventListener('keydown', (e)=> { if(e.key==='Enter') btnSend.click(); });
-
-    function stopListening(){
-      if(recognition){
-        try { recognition.stop(); } catch(e){}
-        listening = false;
-        listenStatus.textContent = 'Idle';
-        log('Stopped listening');
-      }
+  }
+  if(synth){
+    populateVoices();
+    if(typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined){
+      speechSynthesis.onvoiceschanged = populateVoices;
     }
+  }
 
-    // current user name (from input) [kept for compatibility]
-    function currentUserName(){
-      const n = document.getElementById('username');
-      return n ? (n.value || '') : '';
+  function speak(text, opts = {}){
+    if(!chkVoice.checked) return;
+    if(!synth) return;
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = opts.lang || lang;
+      u.rate = opts.rate || 1.0;
+      u.pitch = opts.pitch || 1.0;
+      if(voiceSelect.value && availableVoices[voiceSelect.value]) u.voice = availableVoices[voiceSelect.value];
+      synth.cancel();
+      synth.speak(u);
+      addLog('Siri: ' + text);
+    } catch(e){ console.error('synth error', e); addLog('synth error: '+e.message,'err'); }
+  }
+
+  /* Recognition setup */
+  function setupRecognition(){
+    if(!SpeechRecognition){
+      listenStatus.textContent = 'SpeechRecognition not supported';
+      btnStart.disabled = true; btnStop.disabled = true;
+      addLog('SpeechRecognition API not available in this browser', 'err');
+      return;
     }
+    recognition = new SpeechRecognition();
+    recognition.lang = lang;
+    recognition.interimResults = false;
+    recognition.continuous = !!chkContinuous.checked;
+    recognition.maxAlternatives = 1;
 
-    // initial setup
-    function init(){
-      transcriptEl.textContent = 'Press Start Listening and speak. You can also type commands below.';
-      lang = langSelect.value;
-      setupRecognition();
-      log('Assistant ready (enhanced)');
-      // attach quick cmd clicks
-      document.querySelectorAll('.cmd').forEach(c=>{
-        c.addEventListener('click', ()=> { const cmd = c.getAttribute('data-cmd'); handleExtraCommand(cmd) || handleCommand(cmd); });
-      });
-    }
-
-    init();
-
-    // --------------- Extra features: utilities, camera, flashlight, restart, power off, battery, screenshot, news, weather, spotify, translation, games, memory UI ---------------
-
-    // Utility dock click -> command
-    document.querySelectorAll('.util').forEach(card=>{
-      card.addEventListener('click', ()=>{
-        const c = card.getAttribute('data-cmd');
-        handleExtraCommand(c);
-      });
-    });
-
-    // EXTRA: button-driven actions
-    btnWeather.addEventListener('click', ()=> { handleExtraCommand('weather'); });
-    btnNews.addEventListener('click', ()=> { handleExtraCommand('news'); });
-    btnQuote.addEventListener('click', ()=> { handleExtraCommand('motivate'); });
-    btnSpotify.addEventListener('click', ()=> { handleExtraCommand('play spotify'); });
-    btnTranslate.addEventListener('click', ()=> {
-      const phrase = prompt('Phrase to translate (will open Google Translate):');
-      if(phrase) window.open('https://translate.google.com/?sl=auto&tl=en&text=' + encodeURIComponent(phrase) + '&op=translate', '_blank');
-    });
-    btnScreenshot.addEventListener('click', takeScreenshot);
-    btnSelfDestruct.addEventListener('click', ()=> { runSelfDestruct(); });
-
-    btnRPS.addEventListener('click', ()=> { playRPS(); });
-    btnGuess.addEventListener('click', ()=> { playGuess(); });
-
-    // memory buttons
-    btnSaveMemory.addEventListener('click', ()=>{
-      const txt = prompt('What should I remember?');
-      if(txt){
-        const mems = JSON.parse(localStorage.getItem('siri_mems')||'[]');
-        mems.push({text:txt, time: Date.now()});
-        localStorage.setItem('siri_mems', JSON.stringify(mems));
-        speak('Saved that memory.');
-        log('Memory saved: ' + txt);
-      }
-    });
-    btnShowMemory.addEventListener('click', showMemories);
-
-    function showMemories(){
-      const mems = JSON.parse(localStorage.getItem('siri_mems')||'[]');
-      if(mems.length===0){ alert('No memories saved.'); return; }
-      const list = mems.map((m,i)=> (i+1)+'. '+m.text + ' ('+ new Date(m.time).toLocaleString() +')').join('\n\n');
-      alert('Memories:\n\n' + list);
-    }
-
-    // CAMERA & flashlight
-    async function openCamera(){
-      try{
-        cameraOverlay.style.display='flex';
-        if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
-        camStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: usingBackCam ? {ideal:'environment'} : 'user' },
-          audio: false
-        });
-        camVideo.srcObject = camStream;
-        log('Camera opened');
-      }catch(e){
-        log('Camera error: ' + e.message, 'err');
-        alert('Camera permission or device error.');
-      }
-    }
-    function closeCamera(){
-      cameraOverlay.style.display='none';
-      if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
-      log('Camera closed');
-    }
-    btnCloseCamera.addEventListener('click', closeCamera);
-    btnSwitchCamera.addEventListener('click', async ()=>{
-      usingBackCam = !usingBackCam;
-      await openCamera();
-    });
-
-    function flashlight(on){
-      // emulate flashlight by full-screen white overlay
-      flashlightOverlay.style.display = on ? 'flex' : 'none';
-      if(on) flashlightOverlay.style.background = '#ffffff';
-      else flashlightOverlay.style.background = 'transparent';
-      log('Flashlight ' + (on ? 'on' : 'off'));
-    }
-
-    // battery status
-    async function batteryStatus(){
-      try{
-        if(!('getBattery' in navigator)){ alert('Battery API not supported'); return; }
-        const b = await navigator.getBattery();
-        const pct = Math.round(b.level*100);
-        const ch = b.charging ? 'charging' : 'not charging';
-        alert(`Battery: ${pct}% (${ch})`);
-        log(`Battery status: ${pct}% (${ch})`);
-      }catch(e){ log('Battery error: '+e.message, 'err'); }
-    }
-
-    function deviceInfo(){
-      const ua = navigator.userAgent;
-      const plat = navigator.platform;
-      const lang = navigator.language;
-      const info = `UA: ${ua}\nPlatform: ${plat}\nLanguage: ${lang}`;
-      alert(info);
-      log('Device info shown');
-    }
-
-    // wake lock (keep screen on)
-    let wakeLock = null;
-    async function keepScreenOn(){
-      try{
-        if('wakeLock' in navigator){
-          wakeLock = await navigator.wakeLock.request('screen');
-          log('Wake Lock active (screen on)');
-          window.addEventListener('visibilitychange', async ()=>{
-            if(document.visibilityState === 'visible' && wakeLock === null){
-              try{ wakeLock = await navigator.wakeLock.request('screen'); }catch(_){}
-            }
-          });
-        } else {
-          alert('Wake Lock API not supported in this browser');
-        }
-      }catch(e){ log('Wake Lock error: '+e.message); }
-    }
-    function allowSleep(){
-      if(wakeLock){ try{ wakeLock.release(); }catch(_){} wakeLock=null; log('Wake Lock released'); }
-    }
-
-    // vibrate
-    function vibrate(){
-      if('vibrate' in navigator){
-        navigator.vibrate([60,40,60,40,120]);
-        log('Vibration pattern played');
-      } else {
-        alert('Vibration not supported on this device');
-      }
-    }
-
-    // lock/unlock screen (UI only)
-    function lockScreen(){
-      lockOverlay.style.display='flex';
-      log('Screen locked (UI)');
-    }
-    function unlockScreen(){
-      lockOverlay.style.display='none';
-      log('Screen unlocked (UI)');
-    }
-    unlockBtn.addEventListener('click', unlockScreen);
-
-    // open whatsapp
-    function openWhatsApp(){
-      try{
-        window.location.href = "intent://send/#Intent;scheme=whatsapp;package=com.whatsapp;end";
-        setTimeout(()=>window.open('https://web.whatsapp.com', '_blank'), 800);
-      }catch(_){
-        window.open('https://web.whatsapp.com', '_blank');
-      }
-      log('WhatsApp request');
-    }
-    function openGallery(){
-      window.open('https://photos.google.com', '_blank');
-      log('Gallery opened');
-    }
-
-    // Power off / restart (UI simulation)
-    function powerOffAnimation(){
-      powerOverlay.style.display = 'flex';
-      restartText.textContent = 'Powering off...';
-      setTimeout(()=> { document.body.style.filter='brightness(0)'; }, 600);
-      log('Simulated power off');
-    }
-    function restartAnimation(){
-      powerOverlay.style.display = 'flex';
-      restartText.textContent = 'Restarting...';
-      setTimeout(()=> { document.body.style.filter='brightness(0)'; }, 600);
-      setTimeout(()=> {
-        document.body.style.filter='';
-        powerOverlay.style.display='none';
-        log('Simulated restart finished');
-      }, 3200);
-      log('Simulated restart');
-    }
-
-    // Screenshot using html2canvas (load dynamically)
-    async function takeScreenshot(){
-      // try to dynamically load html2canvas if not available
-      if(typeof html2canvas === 'undefined'){
-        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
-      }
-      try{
-        speak('Taking screenshot');
-        const node = document.documentElement;
-        const canvas = await html2canvas(node, { logging:false, useCORS:true, scale:1 });
-        const url = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = url; a.download = 'screenshot.png'; document.body.appendChild(a); a.click(); a.remove();
-        log('Screenshot taken & downloaded');
-      }catch(e){ log('Screenshot failed: '+ e.message, 'err'); alert('Screenshot failed: ' + e.message); }
-    }
-
-    // News - open Google News search
-    function openNews(){
-      speak('Opening top news');
-      window.open('https://news.google.com/topstories?hl=en-US&gl=US&ceid=US:en', '_blank');
-    }
-
-    // Self destruct effect using canvas animation
-    function runSelfDestruct(){
-      const c = boomCanvas;
-      c.width = window.innerWidth; c.height = window.innerHeight; c.style.display='block';
-      const ctx = c.getContext('2d');
-      const particles = [];
-      for(let i=0;i<120;i++){
-        particles.push({
-          x: Math.random()*c.width,
-          y: Math.random()*c.height,
-          vx: (Math.random()-0.5)*8,
-          vy: (Math.random()-0.5)*8,
-          r: Math.random()*4+2,
-          life: Math.random()*80+40
-        });
-      }
-      let t=0;
-      speak('Self destruct in 3... 2... 1...');
-      const id = setInterval(()=>{
-        ctx.fillStyle = 'rgba(0,0,0,0.12)';
-        ctx.fillRect(0,0,c.width,c.height);
-        particles.forEach(p=>{
-          p.x += p.vx; p.y += p.vy; p.life--;
-          ctx.beginPath();
-          ctx.fillStyle = 'rgba(255,'+Math.floor(50+Math.random()*200)+',0,'+ (p.life/120) +')';
-          ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
-        });
-        t++;
-        if(t>140){ clearInterval(id); ctx.clearRect(0,0,c.width,c.height); c.style.display='none'; log('Self-destruct animation done'); }
-      }, 16);
-    }
-
-    // quick games
-    function playRPS(){
-      const choices = ['rock','paper','scissors'];
-      const user = prompt('Choose rock, paper or scissors:');
-      if(!user) return;
-      const u = user.toLowerCase();
-      if(!choices.includes(u)){ alert('Invalid choice'); return; }
-      const bot = choices[Math.floor(Math.random()*3)];
-      let res='Draw';
-      if((u==='rock'&&bot==='scissors')||(u==='paper'&&bot==='rock')||(u==='scissors'&&bot==='paper')) res='You win!';
-      else if(u===bot) res='Draw';
-      else res='You lose!';
-      speak(`You chose ${u}. I chose ${bot}. ${res}`);
-      alert(`You: ${u}\nSiri: ${bot}\n\n${res}`);
-    }
-    function playGuess(){
-      const target = Math.floor(Math.random()*50)+1;
-      let tries=0; let ok=false;
-      while(tries<7){
-        const g = prompt('Guess the number (1-50). Attempts left: ' + (7-tries));
-        if(g===null) return;
-        const n = parseInt(g,10);
-        if(isNaN(n)){ alert('Enter a number'); continue; }
-        tries++;
-        if(n===target){ speak('Correct!'); alert('Correct! The number was '+target); ok=true; break; }
-        else if(n<target){ speak('Higher'); alert('Higher'); }
-        else { speak('Lower'); alert('Lower'); }
-      }
-      if(!ok) { speak('Out of attempts. The number was ' + target); alert('Out of attempts. The number was ' + target); }
-    }
-
-    // small helper to dynamically load script
-    function loadScript(src){
-      return new Promise((res, rej)=>{
-        const s = document.createElement('script');
-        s.src = src; s.onload = ()=>res(); s.onerror = ()=>rej(new Error('Failed to load ' + src));
-        document.head.appendChild(s);
-      });
-    }
-
-    // EXTRA: handle extra commands BEFORE main handler (typed & observed voice lines)
-    function handleExtraCommand(raw){
-      if(!raw) return false;
-      const lower = raw.toLowerCase().trim();
-
-      // direct map
-      if(/^(power\s*off( phone)?|shutdown( phone)?)$/.test(lower)){ powerOffAnimation(); return true; }
-      if(/^(restart( phone)?|reboot( phone)?)$/.test(lower)){ restartAnimation(); return true; }
-      if(/^(flashlight|torch) on$/.test(lower)){ flashlight(true); return true; }
-      if(/^(flashlight|torch) off$/.test(lower)){ flashlight(false); return true; }
-      if(/^open camera$/.test(lower)){ openCamera(); return true; }
-      if(/^close camera$/.test(lower)){ closeCamera(); return true; }
-      if(/^open whatsapp$/.test(lower)){ openWhatsApp(); return true; }
-      if(/^open gallery$/.test(lower)){ openGallery(); return true; }
-      if(/^battery status$/.test(lower)){ batteryStatus(); return true; }
-      if(/^device info$/.test(lower)){ deviceInfo(); return true; }
-      if(/^keep screen on$/.test(lower)){ keepScreenOn(); return true; }
-      if(/^allow sleep$/.test(lower)){ allowSleep(); return true; }
-      if(/^vibrate$/.test(lower)){ vibrate(); return true; }
-      if(/^lock screen$/.test(lower)){ lockScreen(); return true; }
-      if(/^unlock screen$/.test(lower)){ unlockScreen(); return true; }
-      if(/^news$/.test(lower)){ openNews(); return true; }
-      if(/^weather$/.test(lower)){ window.open('https://wttr.in/?format=3', '_blank'); return true; }
-      if(/^play spotify$/.test(lower)){ window.open('https://open.spotify.com/collection/playlists', '_blank'); return true; }
-      if(/^screenshot$/.test(lower)){ takeScreenshot(); return true; }
-      if(/^motivate$/.test(lower)){ const q = quotes[Math.floor(Math.random()*quotes.length)]; speak(q); return true; }
-      if(/^self destruct$/.test(lower)){ runSelfDestruct(); return true; }
-      if(/^play music$/.test(lower)){ window.open('https://www.youtube.com/results?search_query=lofi+beats', '_blank'); return true; }
-      // quick open
-      if(lower.startsWith('open ')){
-        // allow opening certain sites
-        const tgt = lower.replace(/^open\s+/, '').trim();
-        if(tgt==='pw' || tgt.includes('physics')){ window.open('https://www.pw.live/', '_blank'); return true; }
-      }
-
-      return false;
-    }
-
-    // Observe transcript UI nodes to catch voice "User: ..." entries (so addons work for voice)
-    const seen = new Set();
-    const observer = new MutationObserver((muts)=>{
-      muts.forEach(m=>{
-        m.addedNodes && Array.from(m.addedNodes).forEach(node=>{
-          if(node && node.textContent && node.textContent.startsWith('User: ')){
-            const cmd = node.textContent.slice(6).trim();
-            if(!seen.has(cmd)){
-              seen.add(cmd);
-              // first try extras
-              if(!handleExtraCommand(cmd)) {
-                // if not intercepted, main handler will process anyway via recognition->onresult; this prevents double-run
-              }
-            }
-          }
-        });
-      });
-    });
-    if(transcriptEl){
-      observer.observe(transcriptEl, { childList:true });
-    }
-
-    // quick actions: listen for utility clicks (already bound earlier)
-    // For clickable utility-dock cards we already bound above
-
-    // expose some functions for console debugging
-    window.SiriEnh = {
-      speak, takeScreenshot, openCamera, closeCamera, flashlight, restartAnimation, powerOffAnimation, openNews, keepScreenOn, allowSleep, showMemories
+    recognition.onstart = () => {
+      listening = true;
+      listenStatus.textContent = 'Listening...';
+      btnStart.textContent = 'Listening';
+      addLog('Voice recognition started');
     };
 
-    // End main IIFE
-  })();
-  </script>
+    recognition.onend = () => {
+      listening = false;
+      listenStatus.textContent = 'Idle';
+      btnStart.textContent = 'Start Listening';
+      addLog('Voice recognition stopped', 'info');
+      if(chkContinuous.checked && recognition){
+        setTimeout(()=> { try{ recognition.start(); } catch(e){} }, 250);
+      }
+    };
 
-  <!-- tiny helper for user (no change to original main behavior) -->
-  <script>
-    // Bind util card clicks to the underlying extra command router (for convenience)
-    document.querySelectorAll('.util').forEach(card=>{
-      card.addEventListener('click', ()=>{
-        const c = card.getAttribute('data-cmd');
-        // find global handler from SiriEnh or call via dispatch
-        // try to trigger custom logic by dispatching a typed command into cmdInput
-        const input = document.getElementById('cmdInput');
-        input.value = c;
-        document.getElementById('btnSend').click();
+    recognition.onerror = (ev) => {
+      addLog('Speech error: ' + ev.error, 'err');
+    };
+
+    recognition.onresult = (ev) => {
+      const res = ev.results[ev.results.length - 1][0].transcript.trim();
+      lastTranscript = res;
+      appendTranscript('Heard: "' + res + '"');
+      addLog('Heard: ' + res);
+      // handle wake / wake-required
+      if(chkWakeReq.checked){
+        const lw = res.toLowerCase();
+        if(lw.includes('hey siri') || lw.includes('ok siri')){
+          const stripped = lw.replace(/^.*?(hey siri|ok siri)[, ]*/,'').trim();
+          if(stripped) handleCommand(stripped);
+          else speak('Yes?');
+          return;
+        } else {
+          addLog('Ignored speech (wake-word required)', 'info');
+          return;
+        }
+      } else {
+        if(wakeWordOn){
+          if(res.toLowerCase().includes('hey siri') || res.toLowerCase().includes('ok siri')){
+            speak('Yes, I am listening');
+            return;
+          }
+          if(res.toLowerCase().startsWith('hey siri')) {
+            const cmd = res.toLowerCase().replace(/^hey siri[, ]*/,'').trim();
+            if(cmd) handleCommand(cmd);
+            return;
+          }
+        }
+        handleCommand(res);
+      }
+    };
+  }
+
+  /* Transcript UI */
+  function appendTranscript(txt){
+    const d = document.createElement('div');
+    d.style.marginTop = '8px';
+    d.style.fontSize = '14px';
+    d.style.color = '#dbeafe';
+    d.textContent = txt;
+    transcriptEl.appendChild(d);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
+  /* Main command handler */
+  async function handleCommand(textRaw){
+    const text = String(textRaw || '').trim();
+    if(!text) return;
+    appendTranscript('User: ' + text);
+    const lower = text.toLowerCase();
+
+    // small talk
+    if(/^(hi|hello|hey|hey siri)\b/.test(lower)){
+      speak('Hello. How can I help?');
+      return;
+    }
+
+    // time / date
+    if(/\btime\b/.test(lower)){
+      const now = new Date();
+      const out = `It is ${now.toLocaleTimeString()}`;
+      speak(out);
+      return;
+    }
+    if(/\bdate\b/.test(lower)){
+      const now = new Date();
+      const out = `Today is ${now.toLocaleDateString()}`;
+      speak(out);
+      return;
+    }
+
+    // open basic sites
+    if(lower.match(/\b(open|launch) (youtube|google|wikipedia|github|spotify)\b/)){
+      let site = 'https://google.com';
+      if(lower.includes('youtube')) site = 'https://youtube.com';
+      else if(lower.includes('wikipedia')) site = 'https://wikipedia.org';
+      else if(lower.includes('github')) site = 'https://github.com';
+      else if(lower.includes('spotify')) site = 'https://open.spotify.com';
+      speak('Opening ' + site.replace(/^https?:\/\//,''));
+      window.open(site, '_blank');
+      return;
+    }
+
+    // search
+    if(lower.startsWith('search ') || lower.startsWith('google ')){
+      const q = text.replace(/^(search|google)\s+/i,'').trim();
+      if(!q) { speak('What should I search?'); return; }
+      speak('Searching Google for ' + q);
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
+      return;
+    }
+
+    // wiki
+    if(lower.startsWith('wiki ') || lower.startsWith('wikipedia ')){
+      const term = text.replace(/^(wiki|wikipedia)\s+/i,'').trim();
+      if(!term){ speak('What do you want from Wikipedia?'); return; }
+      speak('Searching Wikipedia for ' + term);
+      try {
+        const api = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(term);
+        const r = await fetch(api);
+        if(!r.ok){ speak('No Wikipedia page found for ' + term); return; }
+        const j = await r.json();
+        const extract = j.extract ? j.extract.split('. ').slice(0,2).join('. ') + '.' : 'No summary available.';
+        speak(extract);
+        appendTranscript('Wiki: ' + extract);
+      } catch(e){ speak('Failed to fetch Wikipedia'); addLog('Wiki error: '+e.message, 'err'); }
+      return;
+    }
+
+    // calculate
+    if(lower.startsWith('calculate ') || lower.startsWith('what is ') || /^[0-9\+\-\*\/\.\s\(\)]+$/.test(lower)){
+      const expr = text.replace(/^(calculate|what is)\s+/i,'').replace(/[^0-9+\-*/(). %]/g,'');
+      if(!expr){ speak('I could not parse the expression'); return; }
+      try {
+        const val = Function('"use strict";return (' + expr + ')')();
+        speak('The result is ' + val);
+        appendTranscript('Calc: ' + expr + ' = ' + val);
+      } catch(e){ speak('Sorry, cannot calculate that'); addLog('Calc error: '+e.message,'err'); }
+      return;
+    }
+
+    // timers
+    if(lower.startsWith('set timer') || lower.startsWith('timer ')){
+      const m = lower.match(/(\d+)\s*(seconds|second|minutes|minute|mins|secs)?/);
+      if(!m){ speak('Please tell me the time in seconds or minutes'); return; }
+      let num = parseInt(m[1],10);
+      let unit = (m[2]||'seconds').toLowerCase();
+      let ms = (unit.startsWith('min')) ? num * 60 * 1000 : num * 1000;
+      speak('Timer set for ' + num + ' ' + (unit.startsWith('min') ? 'minutes' : 'seconds'));
+      appendTranscript('Timer: ' + num + ' ' + unit);
+      setTimeout(()=>{ speak('Timer finished: ' + num + ' ' + (unit.startsWith('min') ? 'minutes' : 'seconds')); alert('Timer finished: ' + num + ' ' + unit); }, ms);
+      return;
+    }
+
+    // music
+    if(lower.includes('play music') || lower.includes('play song') || lower.includes('play spotify')){
+      speak('Opening Spotify');
+      window.open('https://open.spotify.com', '_blank');
+      return;
+    }
+
+    // jokes
+    if(lower.includes('joke')){
+      const j = jokes[Math.floor(Math.random()*jokes.length)];
+      speak(j);
+      return;
+    }
+
+    // motivate / quote
+    if(lower.includes('motivate') || lower.includes('motivation') || lower.includes('quote')){
+      const q = quotes[Math.floor(Math.random()*quotes.length)];
+      speak(q);
+      return;
+    }
+
+    // weather quick
+    if(lower.includes('weather')){
+      const m = lower.match(/weather in ([a-zA-Z\s]+)/);
+      const q = m ? m[1].trim() : '';
+      if(q){ speak('Opening weather for ' + q); window.open('https://wttr.in/' + encodeURIComponent(q), '_blank'); }
+      else { speak('Opening weather report'); window.open('https://wttr.in/?format=3', '_blank'); }
+      return;
+    }
+
+    // translate
+    if(lower.startsWith('translate ')){
+      const m = text.match(/^translate\s+(.+?)\s+to\s+([a-zA-Z\-]+)/i);
+      if(m){
+        const phrase = m[1], target = m[2];
+        speak('Translating to ' + target);
+        window.open('https://translate.google.com/?sl=auto&tl='+encodeURIComponent(target)+'&text='+encodeURIComponent(phrase)+'&op=translate', '_blank');
+      } else {
+        speak('Opening Google Translate'); window.open('https://translate.google.com', '_blank');
+      }
+      return;
+    }
+
+    // power / restart (simulated)
+    if(/^(power\s*off( phone)?|shutdown( phone)?)$/.test(lower)){ simulatePowerOff(); return; }
+    if(/^(restart( phone)?|reboot( phone)?)$/.test(lower)){ simulateRestart(); return; }
+
+    // flashlight (simulate)
+    if(/^(flashlight|torch) on$/.test(lower)){ setFlashlight(true); return; }
+    if(/^(flashlight|torch) off$/.test(lower)){ setFlashlight(false); return; }
+
+    // camera
+    if(/^open camera$/.test(lower)){ openCamera(); return; }
+    if(/^close camera$/.test(lower)){ closeCamera(); return; }
+
+    // whatsapp / gallery
+    if(/^open whatsapp$/.test(lower)){ openWhatsApp(); return; }
+    if(/^open gallery$/.test(lower)){ openGallery(); return; }
+
+    // battery info
+    if(/^battery status$/.test(lower)){ showBattery(); return; }
+
+    // device info
+    if(/^device info$/.test(lower)){ showDeviceInfo(); return; }
+
+    // wake lock
+    if(/^keep screen on$/.test(lower)){ keepScreenOn(); return; }
+    if(/^allow sleep$/.test(lower)){ allowSleep(); return; }
+
+    // vibrate
+    if(/^vibrate$/.test(lower)){ doVibrate(); return; }
+
+    // lock screen (UI)
+    if(/^lock screen$/.test(lower)){ lockScreen(); return; }
+    if(/^unlock screen$/.test(lower)){ unlockScreen(); return; }
+
+    // news
+    if(/^news$/.test(lower) || lower.includes('top news')){ openNews(); return; }
+
+    // screenshot
+    if(/^screenshot$/.test(lower) || lower.includes('screenshot') || lower.includes('capture screen')){ takeScreenshot(); return; }
+
+    // memory (save/recall)
+    if(lower.startsWith('remember ')){
+      const mem = text.replace(/^remember\s+/i,'').trim();
+      if(mem){
+        const mems = JSON.parse(localStorage.getItem('siri_mems')||'[]');
+        mems.push({text:mem, time: Date.now()});
+        localStorage.setItem('siri_mems', JSON.stringify(mems));
+        speak('OK, I will remember: ' + mem);
+        addLog('Memory saved: ' + mem);
+      } else speak('What should I remember?');
+      return;
+    }
+    if(lower.startsWith('what do you remember') || lower.startsWith('list memories') || lower.includes('what did i ask you to remember')){
+      showMemories();
+      return;
+    }
+
+    // notes/todo voice shortcuts
+    if(lower.startsWith('note ') || lower.startsWith('remember note ')){
+      const n = text.replace(/^(note|remember note)\s+/i,'').trim();
+      if(n){ saveNote(n); speak('Saved note'); } else speak('What note?');
+      return;
+    }
+    if(lower.startsWith('add task ') || lower.startsWith('todo ')){
+      const t = text.replace(/^(add task|todo)\s+/i,'').trim();
+      if(t){ addTodo(t); speak('Task added'); } else speak('What task?');
+      return;
+    }
+
+    // games
+    if(lower.includes('rock paper scissors') || lower.includes('rps')){ playRPS(); return; }
+    if(lower.includes('guess') && lower.includes('number')){ playGuess(); return; }
+
+    // self destruct
+    if(lower.includes('self destruct') || lower.includes('self-destruct')){ startSelfDestruct(); return; }
+    if(lower.includes('abort') || lower.includes('cancel self destruct') || lower.includes('abort self destruct')){ abortSelfDestruct(); return; }
+
+    // fallback: ask to search
+    speak('I did not understand. Should I search the web for ' + text + '?');
+    if(confirm('Search web for "'+text+'"?')){ window.open('https://www.google.com/search?q=' + encodeURIComponent(text), '_blank'); }
+  }
+
+  /* ----- Extra feature implementations ----- */
+
+  // Simulated power off / restart
+  let powerTimer = null;
+  function simulatePowerOff(){
+    powerOverlay.style.display = 'flex';
+    restartText.textContent = 'Powering off...';
+    addLog('Simulating power off');
+    // darken screen gradually
+    setTimeout(()=> { document.body.style.filter='brightness(0)'; }, 600);
+    powerTimer = setTimeout(()=> {
+      // keep black, show message
+      restartText.textContent = 'Device is off (simulated). Press Cancel to wake.';
+    }, 1200);
+  }
+  function simulateRestart(){
+    powerOverlay.style.display = 'flex';
+    restartText.textContent = 'Restarting...';
+    addLog('Simulating restart');
+    setTimeout(()=> { document.body.style.filter='brightness(0)'; }, 600);
+    setTimeout(()=> {
+      document.body.style.filter='';
+      powerOverlay.style.display='none';
+      restartText.textContent = '';
+      addLog('Simulated restart finished');
+    }, 3200);
+  }
+  powerCancel.addEventListener('click', ()=>{
+    if(powerTimer) clearTimeout(powerTimer);
+    powerOverlay.style.display = 'none';
+    document.body.style.filter='';
+    addLog('Power overlay canceled');
+  });
+
+  // Flashlight simulate (white full-screen overlay)
+  function setFlashlight(on){
+    flashlightOverlay.style.display = on ? 'flex' : 'none';
+    flashlightOverlay.style.background = on ? '#ffffff' : 'transparent';
+    addLog('Flashlight ' + (on ? 'on' : 'off'));
+  }
+
+  // Camera
+  async function openCamera(){
+    try{
+      cameraOverlay.style.display = 'flex';
+      if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream = null; }
+      camStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: usingBackCam ? {ideal:'environment'} : 'user' },
+        audio: false
+      });
+      camVideo.srcObject = camStream;
+      addLog('Camera opened');
+    } catch(e){
+      addLog('Camera error: ' + e.message, 'err'); alert('Camera permission or device error.');
+      cameraOverlay.style.display = 'none';
+    }
+  }
+  function closeCamera(){
+    cameraOverlay.style.display = 'none';
+    if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+    addLog('Camera closed');
+  }
+  btnCloseCamera.addEventListener('click', closeCamera);
+  btnSwitchCamera.addEventListener('click', async ()=>{
+    usingBackCam = !usingBackCam;
+    await openCamera();
+  });
+  btnSnap.addEventListener('click', ()=> {
+    if(!camStream) return;
+    try {
+      const track = camStream.getVideoTracks()[0];
+      const imageCapture = new ImageCapture(track);
+      imageCapture.takePhoto().then(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'snapshot.jpg'; a.click();
+        addLog('Camera snapshot taken');
+      }).catch(err=>{
+        // fallback to drawing video frame to canvas
+        const w = camVideo.videoWidth, h = camVideo.videoHeight;
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        const ctx = c.getContext('2d'); ctx.drawImage(camVideo,0,0,w,h);
+        c.toBlob(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = 'snapshot.jpg'; a.click();
+          addLog('Camera snapshot (canvas) taken');
+        });
+      });
+    }catch(e){ addLog('Snapshot error: '+e.message,'err'); }
+  });
+
+  // WhatsApp / Gallery
+  function openWhatsApp(){ try{ window.location.href = "intent://send/#Intent;scheme=whatsapp;package=com.whatsapp;end"; setTimeout(()=>window.open('https://web.whatsapp.com', '_blank'),800); }catch(_){ window.open('https://web.whatsapp.com', '_blank'); } addLog('WhatsApp opened'); }
+  function openGallery(){ window.open('https://photos.google.com', '_blank'); addLog('Gallery opened'); }
+
+  // Battery
+  async function showBattery(){
+    try{
+      if(!('getBattery' in navigator)){ alert('Battery API not supported'); return; }
+      const b = await navigator.getBattery();
+      const pct = Math.round(b.level*100);
+      const ch = b.charging ? 'charging' : 'not charging';
+      alert(`Battery: ${pct}% (${ch})`);
+      addLog('Battery status: ' + pct + '% ('+ch+')');
+    }catch(e){ addLog('Battery error: '+e.message,'err'); }
+  }
+
+  // Device info
+  function showDeviceInfo(){
+    const ua = navigator.userAgent;
+    const plat = navigator.platform;
+    const lang = navigator.language;
+    const info = `UA: ${ua}\nPlatform: ${plat}\nLanguage: ${lang}`;
+    alert(info);
+    addLog('Device info shown');
+  }
+
+  // Wake lock (keep screen on)
+  async function keepScreenOn(){
+    try{
+      if('wakeLock' in navigator){
+        wakeLock = await navigator.wakeLock.request('screen');
+        addLog('Wake Lock active');
+        wakeLock.addEventListener('release', ()=> { addLog('Wake Lock released'); });
+      } else alert('Wake Lock API not supported');
+    } catch(e){ addLog('WakeLock error: '+e.message,'err'); }
+  }
+  function allowSleep(){ if(wakeLock){ try{ wakeLock.release(); }catch(_){} wakeLock=null; addLog('Wake Lock released'); } }
+
+  // Vibrate
+  function doVibrate(){ if('vibrate' in navigator){ navigator.vibrate([60,40,60]); addLog('Vibration triggered'); } else alert('Vibration not supported'); }
+
+  // Lock UI
+  function lockScreen(){ lockOverlay.style.display = 'flex'; addLog('Screen locked (UI)'); }
+  function unlockScreen(){ lockOverlay.style.display = 'none'; addLog('Screen unlocked (UI)'); }
+  unlockBtn.addEventListener('click', unlockScreen);
+
+  // News
+  function openNews(){ speak('Opening top news'); window.open('https://news.google.com/topstories?hl=en-US&gl=US&ceid=US:en', '_blank'); }
+
+  // Screenshot (uses html2canvas dynamically)
+  async function takeScreenshot(){
+    if(typeof html2canvas === 'undefined'){
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+    }
+    try{
+      speak('Taking screenshot');
+      const node = document.documentElement;
+      const canvas = await html2canvas(node, { logging:false, useCORS:true, scale:1 });
+      const url = canvas.toDataURL('image/png');
+      const a = document.createElement('a'); a.href = url; a.download = 'screenshot.png'; document.body.appendChild(a); a.click(); a.remove();
+      addLog('Screenshot taken');
+    }catch(e){ addLog('Screenshot failed: '+e.message,'err'); alert('Screenshot failed: ' + e.message); }
+  }
+
+  // Dynamic script loader
+  function loadScript(src){
+    return new Promise((res, rej)=>{
+      const s = document.createElement('script'); s.src = src;
+      s.onload = res; s.onerror = ()=>rej(new Error('Failed to load ' + src));
+      document.head.appendChild(s);
+    });
+  }
+
+  /* ---------------------------
+     Notes & To-Do persistence
+     --------------------------- */
+  function loadNotes(){
+    const mems = JSON.parse(localStorage.getItem('siri_notes')||'[]');
+    notesListEl.innerHTML = '';
+    mems.slice().reverse().forEach((m,idx)=>{
+      const d = document.createElement('div');
+      d.style.padding='6px'; d.style.borderBottom='1px solid rgba(255,255,255,0.02)';
+      d.innerHTML = `<div style="font-size:13px">${escapeHtml(m.text)}</div><div style="font-size:11px;color:var(--muted)">${new Date(m.time).toLocaleString()}</div><div style="margin-top:4px"><button data-i="${idx}" class="delNote smallbtn">Delete</button></div>`;
+      notesListEl.appendChild(d);
+    });
+    notesListEl.querySelectorAll('.delNote').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const i = parseInt(b.getAttribute('data-i'),10);
+        const arr = JSON.parse(localStorage.getItem('siri_notes')||'[]');
+        arr.splice(i,1);
+        localStorage.setItem('siri_notes', JSON.stringify(arr));
+        loadNotes();
       });
     });
-  </script>
+  }
+  function saveNote(text){
+    const arr = JSON.parse(localStorage.getItem('siri_notes')||'[]');
+    arr.push({text:text, time: Date.now()});
+    localStorage.setItem('siri_notes', JSON.stringify(arr));
+    loadNotes();
+    addLog('Note saved');
+  }
+  saveNoteBtn.addEventListener('click', ()=>{
+    const txt = noteText.value.trim();
+    if(!txt) return alert('Please write a note');
+    saveNote(txt); noteText.value=''; speak('Note saved');
+  });
+  document.getElementById('clearNote').addEventListener('click', ()=>{ noteText.value=''; });
 
-  <!-- html2canvas is loaded on demand by the screenshot routine -->
+  // To-do
+  function loadTodos(){
+    const arr = JSON.parse(localStorage.getItem('siri_todos')||'[]');
+    todoListEl.innerHTML = '';
+    arr.forEach((t,idx)=>{
+      const div = document.createElement('div');
+      div.style.padding='6px'; div.style.borderBottom='1px solid rgba(255,255,255,0.02)';
+      div.innerHTML = `<input type="checkbox" data-i="${idx}" ${t.done?'checked':''}/> <span style="margin-left:8px">${escapeHtml(t.text)}</span> <button data-i="${idx}" class="delTodo smallbtn" style="float:right">Delete</button>`;
+      todoListEl.appendChild(div);
+    });
+    todoListEl.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+      cb.addEventListener('change', ()=> {
+        const i = parseInt(cb.getAttribute('data-i'),10);
+        const arr = JSON.parse(localStorage.getItem('siri_todos')||'[]');
+        arr[i].done = !!cb.checked;
+        localStorage.setItem('siri_todos', JSON.stringify(arr));
+        loadTodos();
+      });
+    });
+    todoListEl.querySelectorAll('.delTodo').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const i = parseInt(btn.getAttribute('data-i'),10);
+        const arr = JSON.parse(localStorage.getItem('siri_todos')||'[]');
+        arr.splice(i,1);
+        localStorage.setItem('siri_todos', JSON.stringify(arr));
+        loadTodos();
+      });
+    });
+  }
+  addTodoBtn.addEventListener('click', ()=> {
+    const t = todoInput.value.trim(); if(!t) return;
+    addTodo(t); todoInput.value=''; speak('Task added');
+  });
+  function addTodo(text){ const arr = JSON.parse(localStorage.getItem('siri_todos')||'[]'); arr.push({text:text, done:false}); localStorage.setItem('siri_todos', JSON.stringify(arr)); loadTodos(); addLog('Todo added'); }
+  clearTodosBtn.addEventListener('click', ()=> {
+    let arr = JSON.parse(localStorage.getItem('siri_todos')||'[]');
+    arr = arr.filter(x=>!x.done); localStorage.setItem('siri_todos', JSON.stringify(arr)); loadTodos(); addLog('Cleared done todos');
+  });
+
+  /* ----------------------------
+     Self Destruct: fixed implementation
+     - shows countdown overlay (glitchOverlay)
+     - listens for "abort" voice or Abort button
+     - on finish: explosion particle animation on canvas + blackout, then restore after short time
+     ---------------------------- */
+  let selfDestructTimer = null;
+  let selfDestructCountdown = 0;
+  function startSelfDestruct(seconds = 10){
+    if(selfDestructTimer) return speak('Self destruct already in progress');
+    selfDestructCountdown = Math.max(5, parseInt(seconds,10) || 10);
+    glitchOverlay.style.display = 'flex';
+    countdownTime.textContent = selfDestructCountdown;
+    addLog('Self destruct initiated: ' + selfDestructCountdown + 's');
+    speak('Self destruct initiated in ' + selfDestructCountdown + ' seconds. Say abort to cancel.');
+    selfDestructTimer = setInterval(()=>{
+      selfDestructCountdown--;
+      countdownTime.textContent = selfDestructCountdown;
+      // small beep each second (using WebAudio)
+      beep(880, 0.06);
+      if(selfDestructCountdown <= 0){
+        clearInterval(selfDestructTimer);
+        selfDestructTimer = null;
+        executeSelfDestruct();
+      }
+    }, 1000);
+  }
+  function abortSelfDestruct(){
+    if(selfDestructTimer){
+      clearInterval(selfDestructTimer); selfDestructTimer = null;
+      glitchOverlay.style.display = 'none';
+      speak('Self destruct aborted');
+      addLog('Self destruct aborted');
+    } else {
+      speak('No active self destruct sequence');
+    }
+  }
+  abortSelfBtn.addEventListener('click', abortSelfDestruct);
+
+  // Beep via Web Audio
+  function beep(freq=440, duration=0.08){
+    try{
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator(); const g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.value = 0.05;
+      o.connect(g); g.connect(ctx.destination);
+      o.start(0); o.stop(ctx.currentTime + duration);
+      setTimeout(()=> { ctx.close && ctx.close(); }, (duration+0.02)*1000);
+    }catch(e){}
+  }
+
+  // Explosion particle canvas effect & blackout
+  function executeSelfDestruct(){
+    glitchOverlay.style.display = 'none';
+    const c = boomCanvas;
+    c.width = window.innerWidth; c.height = window.innerHeight;
+    c.style.display = 'block';
+    const ctx = c.getContext('2d');
+    const particles = [];
+    const colors = ['#ff6b6b','#ff9f1c','#ffd166','#ff6b81','#ffffff'];
+    for(let i=0;i<300;i++){
+      particles.push({
+        x: Math.random()*c.width,
+        y: Math.random()*c.height,
+        vx: (Math.random()-0.5)*12,
+        vy: (Math.random()-0.5)*12,
+        r: Math.random()*6+2,
+        life: Math.random()*100+60,
+        color: colors[Math.floor(Math.random()*colors.length)]
+      });
+    }
+    let t=0;
+    addLog('Self destruct: BOOM!');
+    speak('Boom');
+    // full-screen white flash
+    const flash = document.createElement('div'); flash.style.position='fixed'; flash.style.inset='0'; flash.style.background='#ffffff'; flash.style.zIndex=12000; flash.style.opacity='0'; document.body.appendChild(flash);
+    flash.animate([{opacity:0},{opacity:1},{opacity:0}], {duration:400, easing:'ease-out'});
+    // play a bigger beep
+    beep(1200, 0.18);
+    const id = setInterval(()=>{
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.fillRect(0,0,c.width,c.height);
+      particles.forEach(p=>{
+        p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.life--;
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = Math.max(0, p.life/160);
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+      });
+      t++;
+      if(t>180){ clearInterval(id); ctx.clearRect(0,0,c.width,c.height); c.style.display='none'; flash.remove(); blackoutThenRestore(); addLog('Self-destruct animation completed'); }
+    }, 16);
+  }
+
+  function blackoutThenRestore(){
+    // blackout page then restore after a few seconds
+    document.body.style.transition = 'filter 0.6s ease';
+    document.body.style.filter = 'brightness(0)';
+    setTimeout(()=> {
+      document.body.style.filter = '';
+      addLog('System restored after self-destruct (simulated)');
+      speak('System restored (simulated)');
+    }, 2200);
+  }
+
+  /* ----------------------------
+     Games
+     ---------------------------- */
+  function playRPS(){
+    const choices=['rock','paper','scissors'];
+    const user = prompt('Choose rock, paper or scissors:');
+    if(!user) return;
+    const u = user.toLowerCase();
+    if(!choices.includes(u)){ alert('Invalid choice'); return; }
+    const bot = choices[Math.floor(Math.random()*3)];
+    let res='Draw';
+    if((u==='rock'&&bot==='scissors')||(u==='paper'&&bot==='rock')||(u==='scissors'&&bot==='paper')) res='You win!';
+    else if(u===bot) res='Draw';
+    else res='You lose!';
+    speak(`You chose ${u}. I chose ${bot}. ${res}`);
+    alert(`You: ${u}\nSiri: ${bot}\n\n${res}`);
+  }
+  function playGuess(){
+    const target = Math.floor(Math.random()*50)+1;
+    let tries=0; let ok=false;
+    while(tries<7){
+      const g = prompt('Guess the number (1-50). Attempts left: ' + (7-tries));
+      if(g===null) return;
+      const n = parseInt(g,10);
+      if(isNaN(n)){ alert('Enter a number'); continue; }
+      tries++;
+      if(n===target){ speak('Correct!'); alert('Correct! The number was '+target); ok=true; break; }
+      else if(n<target){ speak('Higher'); alert('Higher'); }
+      else { speak('Lower'); alert('Lower'); }
+    }
+    if(!ok){ speak('Out of attempts. The number was ' + target); alert('Out of attempts. The number was ' + target); }
+  }
+
+  /* ----------------------------
+     Memories UI
+     ---------------------------- */
+  function showMemories(){
+    const mems = JSON.parse(localStorage.getItem('siri_mems')||'[]');
+    if(mems.length===0){ speak('No memories saved'); return; }
+    const list = mems.map((m,i)=> (i+1)+'. '+m.text + ' ('+ new Date(m.time).toLocaleString() +')').join('\n\n');
+    alert('Memories:\n\n' + list);
+  }
+
+  btnSaveMemory.addEventListener('click', ()=>{
+    const txt = prompt('What should I remember?');
+    if(!txt) return;
+    const mems = JSON.parse(localStorage.getItem('siri_mems')||'[]');
+    mems.push({text:txt, time: Date.now()});
+    localStorage.setItem('siri_mems', JSON.stringify(mems));
+    speak('Saved that memory');
+    addLog('Memory saved: ' + txt);
+  });
+  btnShowMemory.addEventListener('click', showMemories);
+
+  /* ----------------------------
+     PWA install hook
+     ---------------------------- */
+  window.addEventListener('beforeinstallprompt', (e)=>{
+    e.preventDefault();
+    installPromptEvent = e;
+    btnInstall.style.display = 'inline-block';
+    addLog('PWA install available');
+  });
+  btnInstall.addEventListener('click', async ()=>{
+    if(!installPromptEvent) return alert('Install not available');
+    installPromptEvent.prompt();
+    const choice = await installPromptEvent.userChoice;
+    addLog('PWA install choice: ' + (choice.outcome || 'unknown'));
+    installPromptEvent = null;
+    btnInstall.style.display = 'none';
+  });
+
+  /* -------------
+     Extra command router for typed and observed transcripts
+     ------------- */
+  function handleExtraCommand(raw){
+    if(!raw) return false;
+    const lower = raw.toLowerCase().trim();
+    if(/^(power\s*off( phone)?|shutdown( phone)?)$/.test(lower)){ simulatePowerOff(); return true; }
+    if(/^(restart( phone)?|reboot( phone)?)$/.test(lower)){ simulateRestart(); return true; }
+    if(/^(flashlight|torch) on$/.test(lower)){ setFlashlight(true); return true; }
+    if(/^(flashlight|torch) off$/.test(lower)){ setFlashlight(false); return true; }
+    if(/^open camera$/.test(lower)){ openCamera(); return true; }
+    if(/^close camera$/.test(lower)){ closeCamera(); return true; }
+    if(/^open whatsapp$/.test(lower)){ openWhatsApp(); return true; }
+    if(/^open gallery$/.test(lower)){ openGallery(); return true; }
+    if(/^battery status$/.test(lower)){ showBattery(); return true; }
+    if(/^device info$/.test(lower)){ showDeviceInfo(); return true; }
+    if(/^keep screen on$/.test(lower)){ keepScreenOn(); return true; }
+    if(/^allow sleep$/.test(lower)){ allowSleep(); return true; }
+    if(/^vibrate$/.test(lower)){ doVibrate(); return true; }
+    if(/^lock screen$/.test(lower)){ lockScreen(); return true; }
+    if(/^unlock screen$/.test(lower)){ unlockScreen(); return true; }
+    if(/^news$/.test(lower)){ openNews(); return true; }
+    if(/^weather$/.test(lower)){ window.open('https://wttr.in/?format=3', '_blank'); return true; }
+    if(/^play spotify$/.test(lower)){ window.open('https://open.spotify.com/collection/playlists', '_blank'); return true; }
+    if(/^screenshot$/.test(lower)){ takeScreenshot(); return true; }
+    if(/^motivate$/.test(lower)){ const q = quotes[Math.floor(Math.random()*quotes.length)]; speak(q); return true; }
+    if(/^self destruct$/.test(lower)){ startSelfDestruct(); return true; }
+    if(/^play music$/.test(lower)){ window.open('https://www.youtube.com/results?search_query=lofi+beats', '_blank'); return true; }
+    if(lower.startsWith('remember ')){ /* allow main handler to handle */ return false; }
+    return false;
+  }
+
+  /* Observe "transcript" area for voice-detected User: entries to trigger extras if needed */
+  const seen = new Set();
+  const observer = new MutationObserver((muts)=>{
+    muts.forEach(m=>{
+      m.addedNodes && Array.from(m.addedNodes).forEach(node=>{
+        if(node && node.textContent && node.textContent.startsWith('User: ')){
+          const cmd = node.textContent.slice(6).trim();
+          if(!seen.has(cmd)){
+            seen.add(cmd);
+            if(handleExtraCommand(cmd)) {
+              // intercepted
+            } else {
+              // main handler already called via recognition event; no double-run
+            }
+          }
+        }
+      });
+    });
+  });
+  if(transcriptEl) observer.observe(transcriptEl, { childList:true });
+
+  /* Bind UI events */
+  btnStart.addEventListener('click', ()=>{
+    if(!recognition) setupRecognition();
+    if(recognition && !listening) try{ recognition.start(); }catch(e){ console.warn(e); }
+  });
+  btnStop.addEventListener('click', stopListening);
+
+  btnWake.addEventListener('click', ()=>{
+    wakeWordOn = !wakeWordOn;
+    wakeStateSpan.textContent = wakeWordOn ? 'On' : 'Off';
+    addLog('Wake-word toggle: ' + (wakeWordOn?'On':'Off'));
+  });
+  btnToggleVoice.addEventListener('click', ()=>{ chkVoice.checked = !chkVoice.checked; addLog('Voice reply ' + (chkVoice.checked?'enabled':'disabled')); });
+
+  btnClearLog.addEventListener('click', ()=>{ logEl.innerHTML=''; transcriptEl.innerHTML=''; addLog('Cleared logs'); });
+
+  chkContinuous.addEventListener('change', ()=>{
+    if(recognition){ recognition.stop(); recognition = null; setupRecognition(); }
+    addLog('Continuous listen: ' + chkContinuous.checked);
+  });
+
+  langSelect.addEventListener('change', ()=> {
+    lang = langSelect.value; langLabel.textContent = (lang==='hi-IN' ? 'Hindi (hi-IN)' : 'English (en-US)');
+    if(recognition) recognition.lang = lang;
+    addLog('Language set to ' + lang);
+  });
+
+  btnSend.addEventListener('click', ()=>{
+    const text = cmdInput.value.trim();
+    if(!text) return;
+    if(handleExtraCommand(text)) { cmdInput.value = ''; return; }
+    handleCommand(text);
+    cmdInput.value = '';
+  });
+  cmdInput.addEventListener('keydown', (e)=> { if(e.key==='Enter') btnSend.click(); });
+
+  // Quick command click bindings
+  document.querySelectorAll('.cmd').forEach(c=>{
+    c.addEventListener('click', ()=> {
+      const cmd = c.getAttribute('data-cmd');
+      if(handleExtraCommand(cmd)) return;
+      handleCommand(cmd);
+    });
+  });
+
+  // Utils dock click
+  document.querySelectorAll('.util').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const c = card.getAttribute('data-cmd');
+      if(handleExtraCommand(c)) return;
+      handleCommand(c);
+    });
+  });
+
+  // Extra feature buttons
+  btnWeather.addEventListener('click', ()=> handleCommand('weather'));
+  btnNews.addEventListener('click', ()=> handleCommand('news'));
+  btnQuote.addEventListener('click', ()=> handleCommand('motivate'));
+  btnSpotify.addEventListener('click', ()=> handleCommand('play spotify'));
+  btnTranslate.addEventListener('click', ()=> {
+    const phrase = prompt('Phrase to translate (will open Google Translate):');
+    if(phrase) window.open('https://translate.google.com/?sl=auto&tl=en&text=' + encodeURIComponent(phrase) + '&op=translate', '_blank');
+  });
+  btnScreenshot.addEventListener('click', takeScreenshot);
+  btnSelfDestruct.addEventListener('click', ()=> startSelfDestruct(10));
+  btnRPS.addEventListener('click', playRPS);
+  btnGuess.addEventListener('click', playGuess);
+
+  // notes/todo toggles
+  btnNotes.addEventListener('click', ()=> { notesArea.classList.toggle('hidden'); loadNotes(); });
+  btnTodo.addEventListener('click', ()=> { todoArea.classList.toggle('hidden'); loadTodos(); });
+
+  // Install sample service worker if present
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').then(()=>{ addLog('Service worker registered (if sw.js exists)'); }).catch(()=>{/* ignore */});
+  }
+
+  // Buttons that require extra functions to be bound
+  document.getElementById('btnStart') && document.getElementById('btnStart').addEventListener('click', ()=>{ if(!recognition) setupRecognition(); });
+
+  // Camera quick open from utility dock
+  // Bind camera util click handled above via util click router
+
+  // Save and load underlying persistent things on startup
+  function init(){
+    transcriptEl.textContent = 'Press Start Listening and speak. You can also type commands below.';
+    lang = langSelect.value;
+    if(SpeechRecognition) setupRecognition();
+    addLog('Assistant ready (Mega)');
+    populateVoices();
+    loadNotes(); loadTodos();
+    // show/hide install button by default
+    btnInstall.style.display = 'none';
+  }
+  init();
+
+  // Stop listening helper
+  function stopListening(){
+    if(recognition){
+      try { recognition.stop(); }catch(e){}
+      listening = false;
+      listenStatus.textContent = 'Idle';
+      addLog('Stopped listening');
+    }
+  }
+
+  // Expose for debugging
+  window.SiriMega = {
+    speak, handleCommand, startSelfDestruct, abortSelfDestruct, openCamera, closeCamera, takeScreenshot
+  };
+
+  // Small helper: watch for voice "abort" in transcript to cancel self destruct
+  // We already handle abort via handleCommand and observation of transcript nodes
+  // Also bind abort if user types "abort"
+  // Already done via handleCommand
+
+})();
+</script>
+
 </body>
 </html>
