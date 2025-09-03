@@ -3,25 +3,25 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Siri-like Web Voice Assistant</title>
+<title>Siri — Web Voice Assistant (Enhanced)</title>
 <style>
   :root{
     --bg:#0f1720; --card:#0b1220; --muted:#94a3b8; --accent:#22c55e; --accent2:#60a5fa;
     --glass: rgba(255,255,255,0.03);
   }
   html,body{height:100%; margin:0; font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:linear-gradient(180deg,#07111a 0%, #08131a 100%); color:#e6eef8}
-  .wrap{max-width:980px; margin:28px auto; padding:20px;}
+  .wrap{max-width:1100px; margin:18px auto; padding:18px;}
   header{display:flex;align-items:center;gap:16px}
   h1{font-size:20px;margin:0}
   .subtitle{color:var(--muted); font-size:13px}
   .controls{display:flex;gap:8px; margin-top:14px; flex-wrap:wrap}
   button{background:var(--card); color:inherit;border:1px solid rgba(255,255,255,0.03); padding:10px 12px; border-radius:8px; cursor:pointer}
   button.primary{background:linear-gradient(90deg,var(--accent),var(--accent2)); color:#022; font-weight:700}
-  .panel{margin-top:18px; display:grid; grid-template-columns: 1fr 360px; gap:16px}
+  .panel{margin-top:18px; display:grid; grid-template-columns: 1fr 420px; gap:16px}
   .card{background:var(--glass); border-radius:10px; padding:14px; box-shadow:0 6px 24px rgba(2,6,23,0.6); border:1px solid rgba(255,255,255,0.03)}
-  #left {min-height:420px}
-  #right {min-height:420px}
-  #transcript{min-height:120px; background: rgba(255,255,255,0.02); padding:10px; border-radius:8px; color:#dff0d8}
+  #left {min-height:520px}
+  #right {min-height:520px}
+  #transcript{min-height:160px; background: rgba(255,255,255,0.02); padding:10px; border-radius:8px; color:#dff0d8; overflow:auto}
   #log{height:260px; overflow:auto; font-size:13px; color:var(--muted); background: rgba(255,255,255,0.01); padding:8px; border-radius:6px}
   .row{display:flex; gap:8px; align-items:center}
   label{font-size:13px;color:var(--muted)}
@@ -30,11 +30,44 @@
   .smallbtn{padding:6px 8px; font-size:13px}
   .status{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.03); color:var(--muted); font-size:13px}
   .command-list{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:10px}
-  .cmd{background:rgba(255,255,255,0.02); padding:8px;border-radius:6px;font-size:13px;color:var(--muted)}
+  .cmd{background:rgba(255,255,255,0.02); padding:8px;border-radius:6px;font-size:13px;color:var(--muted); cursor:pointer}
   footer{margin-top:18px;text-align:center;color:var(--muted);font-size:13px}
   .kbd{background:#071827;padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.04); font-weight:700}
   .muted{color:var(--muted)}
-  @media (max-width:900px){ .panel{grid-template-columns:1fr} #right{order:2} }
+  .utility-dock{
+    max-width:1100px; margin: 12px auto 22px; padding:12px;
+    display:grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap:10px;
+  }
+  .util{ background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); color:#e6eef8; padding:12px; border-radius:12px; text-align:center; font-size:14px; cursor:pointer }
+  .util small{ display:block; color:#94a3b8; font-size:12px; margin-top:4px }
+  /* overlays */
+  .overlay {
+    position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 9999;
+    color: #fff; font-family: inherit;
+  }
+  #powerOverlay { background: rgba(0,0,0,0.98); flex-direction: column; gap:18px; }
+  #powerSpinner { width:64px;height:64px;border-radius:50%; border:6px solid rgba(255,255,255,0.12); border-top-color:#fff; animation: spin 1s linear infinite}
+  @keyframes spin { to{ transform: rotate(360deg);} }
+
+  #cameraOverlay { background: rgba(0,0,0,0.94); color:#fff; flex-direction: column; gap:10px; }
+  #cameraView { width:min(92vw,960px); height: min(70vh,520px); background:#000; border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.06) }
+  #cameraView video{ width:100%; height:100%; object-fit:cover }
+  .overlayTopBar{
+    position: fixed; top:14px; left:50%; transform: translateX(-50%);
+    display:flex; gap:8px; align-items:center; background:rgba(255,255,255,0.04);
+    padding:8px 12px; border:1px solid rgba(255,255,255,0.06); border-radius:999px; z-index:10000; color:#fff
+  }
+  .overlayTopBar button{ background:transparent; border:1px solid rgba(255,255,255,0.12); color:#fff; padding:8px 10px; border-radius:999px; cursor:pointer }
+  #lockOverlay{ background: rgba(0,0,0,0.9); color:#fff; flex-direction:column; gap:12px; text-align:center }
+  #flashlightOverlay{ background:#ffffff; display:none } /* white screen to simulate torch */
+  .badge-line{ text-align:center; color:#94a3b8; font-size:12px; margin-bottom:18px }
+  /* self destruct */
+  #boomCanvas { position: fixed; inset:0; pointer-events:none; z-index:11000; display:none }
+  .hidden{ display:none !important; }
+  /* voice select */
+  select.verysmall{ padding:6px; border-radius:6px; background:var(--card); color:inherit; border:1px solid rgba(255,255,255,0.03) }
+  /* responsive */
+  @media (max-width:980px){ .panel{grid-template-columns:1fr} #right{order:2} }
 </style>
 </head>
 <body>
@@ -57,10 +90,14 @@
       <button id="btnWake">Wake-word: <span id="wakeState">Off</span></button>
       <button id="btnToggleVoice">Toggle Voice Reply</button>
       <button id="btnClearLog" class="smallbtn">Clear Log</button>
-      <select id="langSelect" style="padding:8px;border-radius:8px;background:var(--card);color:inherit">
+      <select id="langSelect" class="verysmall">
         <option value="en-US">English (en-US)</option>
         <option value="hi-IN">Hindi (hi-IN)</option>
       </select>
+      <label style="margin-left:8px;color:var(--muted)">Voice:</label>
+      <select id="voiceSelect" class="verysmall"></select>
+      <button id="btnSaveMemory" title="Save memory (e.g. remember my birthday)">💾 Save Memory</button>
+      <button id="btnShowMemory" title="Show saved memories">🗂️ Memories</button>
     </div>
 
     <div class="panel">
@@ -78,18 +115,42 @@
         <div style="margin-top:12px">
           <strong>Quick commands</strong>
           <div class="command-list">
-            <div class="cmd">open youtube</div>
-            <div class="cmd">open google</div>
-            <div class="cmd">search cats</div>
-            <div class="cmd">time</div>
-            <div class="cmd">date</div>
-            <div class="cmd">wiki tesla</div>
-            <div class="cmd">calculate 12 + 34</div>
-            <div class="cmd">set timer 15 seconds</div>
-            <div class="cmd">play music</div>
-            <div class="cmd">tell me a joke</div>
+            <div class="cmd" data-cmd="open youtube">open youtube</div>
+            <div class="cmd" data-cmd="open google">open google</div>
+            <div class="cmd" data-cmd="search cats">search cats</div>
+            <div class="cmd" data-cmd="time">time</div>
+            <div class="cmd" data-cmd="date">date</div>
+            <div class="cmd" data-cmd="wiki tesla">wiki tesla</div>
+            <div class="cmd" data-cmd="calculate 12 + 34">calculate 12 + 34</div>
+            <div class="cmd" data-cmd="set timer 15 seconds">set timer 15 seconds</div>
+            <div class="cmd" data-cmd="play music">play music</div>
+            <div class="cmd" data-cmd="tell me a joke">tell me a joke</div>
           </div>
         </div>
+
+        <hr style="border-color: rgba(255,255,255,0.04); margin:14px 0">
+
+        <h4>Extra features (voice shortcuts)</h4>
+        <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:10px">
+          <button class="smallbtn" id="btnWeather">Weather</button>
+          <button class="smallbtn" id="btnNews">Top News</button>
+          <button class="smallbtn" id="btnQuote">Motivate Me</button>
+          <button class="smallbtn" id="btnSpotify">Play on Spotify</button>
+          <button class="smallbtn" id="btnTranslate">Translate</button>
+          <button class="smallbtn" id="btnScreenshot">Screenshot</button>
+          <button class="smallbtn" id="btnSelfDestruct">Self-Destruct!</button>
+        </div>
+
+        <hr style="border-color: rgba(255,255,255,0.04); margin:14px 0">
+
+        <div style="margin-top:8px">
+          <strong>Games</strong>
+          <div class="row" style="margin-top:8px; gap:8px; flex-wrap:wrap">
+            <button id="btnRPS" class="smallbtn">Rock Paper Scissors</button>
+            <button id="btnGuess" class="smallbtn">Guess Number</button>
+          </div>
+        </div>
+
       </div>
 
       <div id="right" class="card">
@@ -105,731 +166,910 @@
           <label>Continuous listen:</label>
           <input type="checkbox" id="chkContinuous" />
         </div>
+        <div class="row" style="margin-top:6px">
+          <label>Wake-word required:</label>
+          <input type="checkbox" id="chkWakeReq" />
+        </div>
         <div style="margin-top:10px" class="muted">Supported in Chrome/Edge. Safari support is limited.</div>
       </div>
     </div>
+
+    <div class="utility-dock">
+      <div class="util" data-cmd="power off phone">Power Off<small>voice: power off phone</small></div>
+      <div class="util" data-cmd="restart phone">Restart<small>voice: restart phone</small></div>
+      <div class="util" data-cmd="flashlight on">Flashlight On<small>torch on</small></div>
+      <div class="util" data-cmd="flashlight off">Flashlight Off</div>
+      <div class="util" data-cmd="open camera">Open Camera</div>
+      <div class="util" data-cmd="close camera">Close Camera</div>
+      <div class="util" data-cmd="open whatsapp">Open WhatsApp</div>
+      <div class="util" data-cmd="open gallery">Open Gallery</div>
+      <div class="util" data-cmd="battery status">Battery Status</div>
+      <div class="util" data-cmd="device info">Device Info</div>
+      <div class="util" data-cmd="keep screen on">Keep Screen On</div>
+      <div class="util" data-cmd="allow sleep">Allow Sleep</div>
+      <div class="util" data-cmd="vibrate">Vibrate</div>
+      <div class="util" data-cmd="lock screen">Lock Screen</div>
+      <div class="util" data-cmd="unlock screen">Unlock Screen</div>
+    </div>
+
+    <div class="badge-line">Extra features (weather/news/quotes/spotify/games/camera/memory) added — all client-side.</div>
 
     <footer>
       Built for you — say hi and try commands. DEVELOPED BY RUDRANSH PANDEY (A GENIUS).  
     </footer>
   </div>
 
-<script>
-/* -------------------------
-  Siri-like Web Voice Assistant
-  - Uses Web Speech API (SpeechRecognition & SpeechSynthesis)
-  - No backend required
-  - Commands handled locally (search, open, wiki, calculate, timer, jokes, music, etc.)
-  ------------------------- */
+  <!-- Overlays -->
+  <div id="powerOverlay" class="overlay">
+    <div id="powerSpinner"></div>
+    <div id="powerLogo" style="font-size:22px; letter-spacing:4px; opacity:0.95">S H U T T I N G &nbsp; D O W N</div>
+    <div id="restartText" style="font-size:14px; opacity:0.9"></div>
+  </div>
 
-(function(){
-  // Feature detection
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const synth = window.speechSynthesis;
+  <div id="flashlightOverlay" class="overlay" style="display:none"></div>
 
-  // UI elements
-  const btnStart = document.getElementById('btnStart');
-  const btnStop = document.getElementById('btnStop');
-  const btnWake = document.getElementById('btnWake');
-  const btnToggleVoice = document.getElementById('btnToggleVoice');
-  const btnClearLog = document.getElementById('btnClearLog');
-  const langSelect = document.getElementById('langSelect');
-  const langLabel = document.getElementById('langLabel');
-  const listenStatus = document.getElementById('listenStatus');
-  const transcriptEl = document.getElementById('transcript');
-  const cmdInput = document.getElementById('cmdInput');
-  const btnSend = document.getElementById('btnSend');
-  const logEl = document.getElementById('log');
-  const chkVoice = document.getElementById('chkVoice');
-  const chkContinuous = document.getElementById('chkContinuous');
-  const wakeStateSpan = document.getElementById('wakeState');
+  <div id="lockOverlay" class="overlay">
+    <div style="font-size:28px; letter-spacing:2px">🔒 Screen Locked</div>
+    <div>Say <b>"unlock screen"</b> or press the unlock button below</div>
+    <button class="btn" id="unlockBtn" style="padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.06); color:#fff; cursor:pointer">Unlock</button>
+  </div>
 
-  // State
-  let recognition = null;
-  let listening = false;
-  let wakeWordOn = false;
-  let lastTranscript = '';
-  let lang = 'en-US';
-  let continuous = false;
+  <div id="cameraOverlay" class="overlay">
+    <div class="overlayTopBar">
+      <button id="btnCloseCamera">Close</button>
+      <button id="btnSwitchCamera">Switch</button>
+    </div>
+    <div id="cameraView"><video id="camVideo" autoplay playsinline muted></video></div>
+  </div>
 
-  // Jokes array
-  const jokes = [
-    "Why did the developer go broke? Because he used up all his cache.",
-    "Why do programmers prefer dark mode? Because the light attracts bugs.",
-    "I told my computer I needed a break, and it said — 'No problem, I'll go to sleep.'"
-  ];
+  <canvas id="boomCanvas"></canvas>
 
-  // Helper: add to log
-  function log(message, type='info'){
-    const time = new Date().toLocaleTimeString();
-    const el = document.createElement('div');
-    el.innerHTML = `<strong style="color:#9ae6b4">${time}</strong> — <span style="color:${type==='err'?'#ff7b7b':'#cfe8ff'}">${escapeHtml(message)}</span>`;
-    logEl.prepend(el);
-  }
+  <script>
+  /* ------------------------------
+     Core Siri assistant (kept same + extended)
+     - SpeechRecognition & SpeechSynthesis
+     - Commands: open/search/wiki/calc/timer/music/joke etc.
+     - Added more command handlers and hooks to add-ons
+     ------------------------------ */
+  (function(){
+    // Feature detection
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const synth = window.speechSynthesis;
 
-  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
+    // UI elements
+    const btnStart = document.getElementById('btnStart');
+    const btnStop = document.getElementById('btnStop');
+    const btnWake = document.getElementById('btnWake');
+    const btnToggleVoice = document.getElementById('btnToggleVoice');
+    const btnClearLog = document.getElementById('btnClearLog');
+    const langSelect = document.getElementById('langSelect');
+    const langLabel = document.getElementById('langLabel');
+    const listenStatus = document.getElementById('listenStatus');
+    const transcriptEl = document.getElementById('transcript');
+    const cmdInput = document.getElementById('cmdInput');
+    const btnSend = document.getElementById('btnSend');
+    const logEl = document.getElementById('log');
+    const chkVoice = document.getElementById('chkVoice');
+    const chkContinuous = document.getElementById('chkContinuous');
+    const wakeStateSpan = document.getElementById('wakeState');
+    const chkWakeReq = document.getElementById('chkWakeReq');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const btnSaveMemory = document.getElementById('btnSaveMemory');
+    const btnShowMemory = document.getElementById('btnShowMemory');
 
-  // Speak helper
-  function speak(text, opts = {}){
-    if(!chkVoice.checked) return;
-    if(!synth) return;
-    try {
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = opts.lang || lang;
-      u.rate = opts.rate || 1.0;
-      u.pitch = opts.pitch || 1.0;
-      synth.cancel(); // stop previous
-      synth.speak(u);
-    } catch (e) {
-      console.error('synth error', e);
+    // Add-on anchors (buttons)
+    const btnWeather = document.getElementById('btnWeather');
+    const btnNews = document.getElementById('btnNews');
+    const btnQuote = document.getElementById('btnQuote');
+    const btnSpotify = document.getElementById('btnSpotify');
+    const btnTranslate = document.getElementById('btnTranslate');
+    const btnScreenshot = document.getElementById('btnScreenshot');
+    const btnSelfDestruct = document.getElementById('btnSelfDestruct');
+    const btnRPS = document.getElementById('btnRPS');
+    const btnGuess = document.getElementById('btnGuess');
+
+    // overlays
+    const powerOverlay = document.getElementById('powerOverlay');
+    const restartText = document.getElementById('restartText');
+    const flashlightOverlay = document.getElementById('flashlightOverlay');
+    const lockOverlay = document.getElementById('lockOverlay');
+    const unlockBtn = document.getElementById('unlockBtn');
+    const cameraOverlay = document.getElementById('cameraOverlay');
+    const camVideo = document.getElementById('camVideo');
+    const btnCloseCamera = document.getElementById('btnCloseCamera');
+    const btnSwitchCamera = document.getElementById('btnSwitchCamera');
+    const boomCanvas = document.getElementById('boomCanvas');
+
+    // State
+    let recognition = null;
+    let listening = false;
+    let wakeWordOn = false;
+    let lastTranscript = '';
+    let lang = 'en-US';
+    let continuous = false;
+    let camStream = null;
+    let usingBackCam = true;
+    let wakeRequired = false;
+
+    // small datasets
+    const jokes = [
+      "Why did the developer go broke? Because he used up all his cache.",
+      "Why do programmers prefer dark mode? Because the light attracts bugs.",
+      "I told my computer I needed a break, and it said — no problem, I'll go to sleep."
+    ];
+    const quotes = [
+      "The best time to plant a tree was 20 years ago. The second best time is now.",
+      "Don't watch the clock; do what it does. Keep going.",
+      "You don't have to be great to start, but you have to start to be great."
+    ];
+
+    // Logging helper
+    function log(message, type='info'){
+      const time = new Date().toLocaleTimeString();
+      const el = document.createElement('div');
+      el.innerHTML = `<strong style="color:#9ae6b4">${time}</strong> — <span style="color:${type==='err'?'#ff7b7b':'#cfe8ff'}">${escapeHtml(message)}</span>`;
+      logEl.prepend(el);
     }
-  }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]; }); }
 
-  // Initialize recognition
-  function setupRecognition(){
-    if(!SpeechRecognition) {
-      listenStatus.textContent = 'SpeechRecognition not supported';
-      btnStart.disabled = true; btnStop.disabled = true;
-      return;
+    // Speak helper with voice selection
+    let availableVoices = [];
+    function populateVoices(){
+      availableVoices = synth.getVoices() || [];
+      voiceSelect.innerHTML = '';
+      availableVoices.forEach((v, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `${v.name} — ${v.lang} ${v.default ? '(default)' : ''}`;
+        voiceSelect.appendChild(opt);
+      });
     }
-    recognition = new SpeechRecognition();
-    recognition.lang = lang;
-    recognition.interimResults = false;
-    recognition.continuous = continuous; // controlled by checkbox
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      listening = true;
-      listenStatus.textContent = 'Listening...';
-      btnStart.textContent = 'Listening';
-      log('Voice recognition started');
-    };
-
-    recognition.onend = () => {
-      listening = false;
-      listenStatus.textContent = 'Idle';
-      btnStart.textContent = 'Start Listening';
-      log('Voice recognition stopped', 'info');
-      // If continuous/chkContinuous is on, restart automatically
-      if(chkContinuous.checked && recognition){
-        setTimeout(()=> { try{ recognition.start() } catch(e){} }, 250);
+    if(synth) {
+      populateVoices();
+      if(typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = populateVoices;
       }
-    };
+    }
+    function speak(text, opts = {}){
+      if(!chkVoice.checked) return;
+      if(!synth) return;
+      try {
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = opts.lang || lang;
+        u.rate = opts.rate || 1.0;
+        u.pitch = opts.pitch || 1.0;
+        if(voiceSelect.value && availableVoices[voiceSelect.value]) u.voice = availableVoices[voiceSelect.value];
+        synth.cancel(); // stop previous
+        synth.speak(u);
+        log('Siri: ' + text);
+      } catch (e) {
+        console.error('synth error', e);
+      }
+    }
 
-    recognition.onerror = (ev) => {
-      log('Speech error: ' + ev.error, 'err');
-    };
+    // Recognition setup
+    function setupRecognition(){
+      if(!SpeechRecognition) {
+        listenStatus.textContent = 'SpeechRecognition not supported';
+        btnStart.disabled = true; btnStop.disabled = true;
+        return;
+      }
+      recognition = new SpeechRecognition();
+      recognition.lang = lang;
+      recognition.interimResults = false;
+      recognition.continuous = chkContinuous.checked;
+      recognition.maxAlternatives = 1;
 
-    recognition.onresult = (ev) => {
-      const res = ev.results[ev.results.length - 1][0].transcript.trim();
-      lastTranscript = res;
-      transcriptEl.textContent = 'Heard: "' + res + '"';
-      log('Heard: ' + res);
-      // If wake-word on, check for it first
-      if(wakeWordOn){
-        if(res.toLowerCase().includes('hey siri') || res.toLowerCase().includes('ok siri')){
-          speak('Yes, I am listening');
-          log('Wake word detected — ready for command');
-          // start a short recognition for the next command (if not continuous)
-          // If continuous: we are already listening
-          return;
+      recognition.onstart = () => {
+        listening = true;
+        listenStatus.textContent = 'Listening...';
+        btnStart.textContent = 'Listening';
+        log('Voice recognition started');
+      };
+
+      recognition.onend = () => {
+        listening = false;
+        listenStatus.textContent = 'Idle';
+        btnStart.textContent = 'Start Listening';
+        log('Voice recognition stopped', 'info');
+        if(chkContinuous.checked && recognition){
+          setTimeout(()=> { try{ recognition.start() } catch(e){} }, 250);
         }
-        // If wake word is required and not present, ignore
-        // But be forgiving: if phrase contains wake word + command, strip it
-        if(res.toLowerCase().startsWith('hey siri')) {
-          const cmd = res.toLowerCase().replace(/^hey siri[, ]*/,'').trim();
-          if(cmd) handleCommand(cmd);
+      };
+
+      recognition.onerror = (ev) => {
+        log('Speech error: ' + ev.error, 'err');
+      };
+
+      recognition.onresult = (ev) => {
+        const res = ev.results[ev.results.length - 1][0].transcript.trim();
+        lastTranscript = res;
+        transcriptEl.textContent = 'Heard: "' + res + '"';
+        log('Heard: ' + res);
+        // respect wake-word toggle / required setting:
+        if(chkWakeReq.checked){
+          // if wake-word required, only accept when phrase includes wake word or starts with it
+          const lw = res.toLowerCase();
+          if(lw.includes('hey siri') || lw.includes('ok siri')){
+            // if command is contained after wake phrase, strip and handle
+            const stripped = lw.replace(/^.*?(hey siri|ok siri)[, ]*/,'').trim();
+            if(stripped) handleCommand(stripped);
+            else { speak('Yes?'); }
+            return;
+          } else {
+            log('Ignored — wake-word required', 'info');
+            return;
+          }
+        } else {
+          // If wake-word mode (button) is ON but not required, respond to wake word specially
+          if(wakeWordOn){
+            if(res.toLowerCase().includes('hey siri') || res.toLowerCase().includes('ok siri')){
+              speak('Yes, I am listening');
+              return;
+            }
+            // if phrase starts with wake word, strip & handle
+            if(res.toLowerCase().startsWith('hey siri')) {
+              const cmd = res.toLowerCase().replace(/^hey siri[, ]*/,'').trim();
+              if(cmd) handleCommand(cmd);
+              return;
+            }
+          }
+          handleCommand(res);
+        }
+      };
+    }
+
+    // Main command handler (keeps original behavior + extras)
+    async function handleCommand(textRaw){
+      const text = textRaw.trim();
+      if(!text) return;
+      addTranscriptEntry('User: ' + text);
+      const lower = text.toLowerCase();
+
+      // small talk
+      if(/^(hi|hello|hey|hey siri)\b/.test(lower)){
+        speak('Hello ' + (currentUserName() || '') + '. How can I help?');
+        addTranscriptEntry('Siri: greeting');
+        return;
+      }
+      // time/date
+      if(lower.includes('time')) {
+        const now = new Date();
+        const out = `It is ${now.toLocaleTimeString()}`;
+        speak(out);
+        addTranscriptEntry('Siri: ' + out);
+        return;
+      }
+      if(lower.includes('date')) {
+        const now = new Date();
+        const out = `Today is ${now.toLocaleDateString()}`;
+        speak(out);
+        addTranscriptEntry('Siri: ' + out);
+        return;
+      }
+      // open website common
+      if(lower.match(/\bopen (youtube|google|wikipedia|github|spotify)\b/)) {
+        let site = 'https://google.com';
+        if(lower.includes('youtube')) site = 'https://youtube.com';
+        else if(lower.includes('wikipedia')) site = 'https://wikipedia.org';
+        else if(lower.includes('github')) site = 'https://github.com';
+        else if(lower.includes('spotify')) site = 'https://open.spotify.com';
+        speak('Opening ' + site.replace(/^https?:\/\//,''));
+        window.open(site, '_blank');
+        addTranscriptEntry('Siri: opening ' + site);
+        return;
+      }
+      // search
+      if(lower.startsWith('search ') || lower.startsWith('google ')) {
+        const q = text.replace(/^(search|google)\s+/i,'').trim();
+        if(!q){ speak('What do you want me to search?'); return; }
+        speak('Searching Google for ' + q);
+        const url = 'https://www.google.com/search?q=' + encodeURIComponent(q);
+        window.open(url, '_blank');
+        addTranscriptEntry('Siri: searched for ' + q);
+        return;
+      }
+      // wiki
+      if(lower.startsWith('wiki ') || lower.startsWith('wikipedia ')) {
+        const term = text.replace(/^(wiki|wikipedia)\s+/i,'').trim();
+        if(!term){ speak('What do you want from Wikipedia?'); return; }
+        speak('Searching Wikipedia for ' + term);
+        addTranscriptEntry('Siri: fetching wikipedia for ' + term);
+        try {
+          const api = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(term);
+          const r = await fetch(api);
+          if(!r.ok) { speak('No Wikipedia page found for ' + term); return; }
+          const j = await r.json();
+          const extract = j.extract ? j.extract.split('. ').slice(0,2).join('. ') + '.' : 'No summary available.';
+          speak(extract);
+          addTranscriptEntry('Wiki: ' + extract);
+        } catch (e) {
+          speak('Failed to fetch Wikipedia.');
+          addTranscriptEntry('Wiki error: ' + e.message, 'err');
+        }
+        return;
+      }
+      // calculate
+      if(lower.startsWith('calculate ') || lower.startsWith('what is ') || /^[0-9\+\-\*\/\. ]+$/.test(lower)) {
+        const expr = text.replace(/^(calculate|what is)\s+/i,'').replace(/[^0-9+\-*/(). %]/g,'');
+        if(!expr){ speak('I could not parse the expression'); return; }
+        try {
+          const val = Function('"use strict";return (' + expr + ')')();
+          speak('The result is ' + val);
+          addTranscriptEntry('Calc: ' + expr + ' = ' + val);
+        } catch (e) {
+          speak('Sorry, cannot calculate that.');
+          addTranscriptEntry('Calc error: ' + e.message, 'err');
+        }
+        return;
+      }
+      // timer / reminder
+      if(lower.startsWith('set timer') || lower.startsWith('timer ')) {
+        const m = lower.match(/(\d+)\s*(seconds|second|minutes|minute|secs|mins)?/);
+        if(!m){ speak('Please tell me the time in seconds or minutes'); return; }
+        let num = parseInt(m[1],10);
+        let unit = (m[2]||'seconds').toLowerCase();
+        let ms = (unit.startsWith('min')) ? num * 60 * 1000 : num * 1000;
+        speak('Timer set for ' + num + ' ' + (unit.startsWith('min') ? 'minutes' : 'seconds'));
+        addTranscriptEntry('Timer: ' + num + ' ' + unit);
+        setTimeout(()=>{
+          speak('Timer finished: ' + num + ' ' + (unit.startsWith('min') ? 'minutes' : 'seconds'));
+          alert('Timer finished: ' + num + ' ' + unit);
+        }, ms);
+        return;
+      }
+      // play music -> spotify or youtube
+      if(lower.includes('play music') || lower.includes('play song') || lower.includes('play spotify')) {
+        speak('Opening Spotify playlist');
+        window.open('https://open.spotify.com', '_blank');
+        return;
+      }
+      // jokes
+      if(lower.includes('joke')) {
+        const j = jokes[Math.floor(Math.random()*jokes.length)];
+        speak(j);
+        addTranscriptEntry('Joke: ' + j);
+        return;
+      }
+      // motivational quote
+      if(lower.includes('motivate') || lower.includes('motivation') || lower.includes('quote')) {
+        const q = quotes[Math.floor(Math.random()*quotes.length)];
+        speak(q);
+        addTranscriptEntry('Quote: ' + q);
+        return;
+      }
+      // weather quick (open wttr or ask)
+      if(lower.includes('weather')) {
+        // try to parse "weather in CITY"
+        const m = lower.match(/weather in ([a-zA-Z\s]+)/);
+        const q = m ? m[1].trim() : '';
+        if(q) {
+          speak('Opening weather for ' + q);
+          window.open('https://wttr.in/' + encodeURIComponent(q), '_blank');
+        } else {
+          speak('Opening weather report');
+          window.open('https://wttr.in/?format=3', '_blank');
+        }
+        return;
+      }
+      // translate -> open google translate
+      if(lower.startsWith('translate ')) {
+        const m = text.match(/^translate\s+(.+?)\s+to\s+([a-zA-Z\-]+)/i);
+        if(m){
+          const phrase = m[1]; const target = m[2];
+          speak('Translating to ' + target);
+          window.open('https://translate.google.com/?sl=auto&tl='+encodeURIComponent(target)+'&text='+encodeURIComponent(phrase)+'&op=translate', '_blank');
           return;
         } else {
-          // Not wake word — ignore spoken phrase
-          log('Ignored (wake-word on)', 'info');
+          speak('Opening Google Translate');
+          window.open('https://translate.google.com', '_blank');
           return;
         }
-      } else {
-        // Not wake-word mode: directly handle command
-        handleCommand(res);
       }
-    };
-  }
-
-  // Command handler
-  async function handleCommand(textRaw){
-    const text = textRaw.trim();
-    if(!text) return;
-    // show in UI
-    addTranscriptEntry('User: ' + text);
-    // Basic parsing
-    const lower = text.toLowerCase();
-
-    // 1. small talk
-    if(/^(hi|hello|hey|hey siri)\b/.test(lower)){
-      speak('Hello ' + (currentUserName() || '') + '. How can I help?');
-      addTranscriptEntry('Siri: greeting');
-      return;
-    }
-
-    // 2. time/date
-    if(lower.includes('time')) {
-      const now = new Date();
-      const out = `It is ${now.toLocaleTimeString()}`;
-      speak(out);
-      addTranscriptEntry('Siri: ' + out);
-      return;
-    }
-    if(lower.includes('date')) {
-      const now = new Date();
-      const out = `Today is ${now.toLocaleDateString()}`;
-      speak(out);
-      addTranscriptEntry('Siri: ' + out);
-      return;
-    }
-
-    // 3. open website
-    if(lower.match(/\bopen (youtube|google|wikipedia|github)\b/)) {
-      let site = 'https://google.com';
-      if(lower.includes('youtube')) site = 'https://youtube.com';
-      else if(lower.includes('wikipedia')) site = 'https://wikipedia.org';
-      else if(lower.includes('github')) site = 'https://github.com';
-      speak('Opening ' + site.replace(/^https?:\/\//,''));
-      window.open(site, '_blank');
-      addTranscriptEntry('Siri: opening ' + site);
-      return;
-    }
-
-    // 4. search <query>
-    if(lower.startsWith('search ') || lower.startsWith('google ')) {
-      const q = text.replace(/^(search|google)\s+/i,'').trim();
-      if(!q){ speak('What do you want me to search?'); return; }
-      speak('Searching Google for ' + q);
-      const url = 'https://www.google.com/search?q=' + encodeURIComponent(q);
-      window.open(url, '_blank');
-      addTranscriptEntry('Siri: searched for ' + q);
-      return;
-    }
-
-    // 5. wiki <term> -> fetch first paragraph from Wikipedia
-    if(lower.startsWith('wiki ') || lower.startsWith('wikipedia ')) {
-      const term = text.replace(/^(wiki|wikipedia)\s+/i,'').trim();
-      if(!term){ speak('What do you want from Wikipedia?'); return; }
-      speak('Searching Wikipedia for ' + term);
-      addTranscriptEntry('Siri: fetching wikipedia for ' + term);
-      try {
-        const api = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(term);
-        const r = await fetch(api);
-        if(!r.ok) { speak('No Wikipedia page found for ' + term); return; }
-        const j = await r.json();
-        const extract = j.extract ? j.extract.split('. ').slice(0,2).join('. ') + '.' : 'No summary available.';
-        speak(extract);
-        addTranscriptEntry('Wiki: ' + extract);
-      } catch (e) {
-        speak('Failed to fetch Wikipedia.');
-        addTranscriptEntry('Wiki error: ' + e.message, 'err');
+      // open apps / utilities
+      const openMatch = lower.match(/^open (https?:\/\/\S+|\S+\.\S{2,})$/);
+      if(openMatch) {
+        const target = openMatch[1].startsWith('http') ? openMatch[1] : 'https://' + openMatch[1];
+        speak('Opening ' + target);
+        window.open(target, '_blank');
+        return;
       }
-      return;
-    }
-
-    // 6. calculate <expr>
-    if(lower.startsWith('calculate ') || lower.startsWith('what is ') || /^[0-9\+\-\*\/\. ]+$/.test(lower)) {
-      // window.eval is dangerous — limit to math chars
-      const expr = text.replace(/^(calculate|what is)\s+/i,'').replace(/[^0-9+\-*/(). %]/g,'');
-      if(!expr){ speak('I could not parse the expression'); return; }
-      try {
-        // safe-ish eval using Function
-        const val = Function('"use strict";return (' + expr + ')')();
-        speak('The result is ' + val);
-        addTranscriptEntry('Calc: ' + expr + ' = ' + val);
-      } catch (e) {
-        speak('Sorry, cannot calculate that.');
-        addTranscriptEntry('Calc error: ' + e.message, 'err');
+      // stop listening / exit
+      if(lower.includes('stop listening') || lower.includes('stop') || lower.includes('exit')) {
+        speak('Stopping voice recognition');
+        stopListening();
+        return;
       }
-      return;
+      // physics wallah quick
+      if(lower.includes("physics wallah") || lower.includes("open pw") || lower.includes("play pw")){
+        speak("Opening Physics Wallah");
+        // try app intent, fallback to website
+        try{ window.location.href = "intent://#Intent;package=in.eduwall.pwclassroom;scheme=pw;end"; }catch(_){}
+        setTimeout(()=> window.open("https://www.pw.live/", "_blank"), 800);
+        return;
+      }
+      // memory (save/recall)
+      if(lower.startsWith('remember ')){
+        // store phrase after "remember"
+        const mem = text.replace(/^remember\s+/i,'').trim();
+        if(mem){
+          const mems = JSON.parse(localStorage.getItem('siri_mems')||'[]');
+          mems.push({text:mem, time: Date.now()});
+          localStorage.setItem('siri_mems', JSON.stringify(mems));
+          speak('Done. I will remember: ' + mem);
+          addTranscriptEntry('Memory saved: ' + mem);
+        } else speak('What should I remember?');
+        return;
+      }
+      if(lower.startsWith('what did i ask you to remember') || lower.startsWith('what do you remember') || lower.startsWith('list memories')){
+        const mems = JSON.parse(localStorage.getItem('siri_mems')||'[]');
+        if(mems.length===0){ speak('You have no saved memories.'); return; }
+        speak('You asked me to remember '+ mems.length + ' items. Opening memory list.');
+        showMemories();
+        return;
+      }
+      // screenshot (uses html2canvas)
+      if(lower.includes('screenshot') || lower.includes('screen shot') || lower.includes('capture screen')){
+        takeScreenshot();
+        return;
+      }
+
+      // fallback: ask to search
+      speak('I did not understand. Do you want me to search the web for ' + text + '?');
+      if(confirm('Search web for "' + text + '"?')) {
+        window.open('https://www.google.com/search?q=' + encodeURIComponent(text), '_blank');
+      }
     }
 
-    // 7. set timer X seconds/minutes
-    if(lower.startsWith('set timer') || lower.startsWith('timer ')) {
-      // parse number and unit
-      const m = lower.match(/(\d+)\s*(seconds|second|minutes|minute|secs|mins)?/);
-      if(!m){ speak('Please tell me the time in seconds or minutes'); return; }
-      let num = parseInt(m[1],10);
-      let unit = (m[2]||'seconds').toLowerCase();
-      let ms = (unit.startsWith('min')) ? num * 60 * 1000 : num * 1000;
-      speak('Timer set for ' + num + ' ' + (unit.startsWith('min') ? 'minutes' : 'seconds'));
-      addTranscriptEntry('Timer: ' + num + ' ' + unit);
-      setTimeout(()=>{
-        speak('Timer finished: ' + num + ' ' + (unit.startsWith('min') ? 'minutes' : 'seconds'));
-        alert('Timer finished: ' + num + ' ' + unit);
-      }, ms);
-      return;
+    // Transcript helper
+    function addTranscriptEntry(txt, type='sys'){
+      const p = document.createElement('div');
+      p.style.marginTop = '8px';
+      p.style.fontSize = '14px';
+      p.style.color = (type==='err' ? '#ffb3b3' : '#dbeafe');
+      p.textContent = txt;
+      transcriptEl.appendChild(p);
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
     }
 
-    // 8. play music -> open YouTube playlist
-    if(lower.includes('play music') || lower.includes('play song') || lower.includes('play some music')) {
-      speak('Playing music');
-      window.open('https://youtu.be/sUf2PtEZris?feature=shared', '_blank');
-      return;
+    // Controls events
+    btnStart.addEventListener('click', () => {
+      if(!recognition) setupRecognition();
+      if(recognition && !listening){
+        try { recognition.start(); } catch(e){ console.warn(e); }
+      }
+    });
+    btnStop.addEventListener('click', stopListening);
+
+    btnWake.addEventListener('click', ()=> {
+      wakeWordOn = !wakeWordOn;
+      wakeStateSpan.textContent = wakeWordOn ? 'On' : 'Off';
+      log('Wake-word announce ' + (wakeWordOn ? 'enabled' : 'disabled'));
+    });
+
+    btnToggleVoice.addEventListener('click', ()=> {
+      chkVoice.checked = !chkVoice.checked;
+      log('Voice reply ' + (chkVoice.checked ? 'enabled' : 'disabled'));
+    });
+
+    btnClearLog.addEventListener('click', ()=> { logEl.innerHTML=''; transcriptEl.innerHTML=''; });
+
+    chkContinuous.addEventListener('change', ()=>{
+      if(recognition){
+        recognition.stop();
+        recognition = null;
+        setupRecognition();
+      }
+      log('Continuous: ' + chkContinuous.checked);
+    });
+
+    langSelect.addEventListener('change', ()=> {
+      lang = langSelect.value;
+      langLabel.textContent = (lang==='hi-IN' ? 'Hindi (hi-IN)' : 'English (en-US)');
+      if(recognition){
+        recognition.lang = lang;
+      }
+      log('Language set to ' + lang);
+    });
+
+    btnSend.addEventListener('click', ()=> {
+      const text = cmdInput.value.trim();
+      if(!text) return;
+      // first run extra handlers (add-ons) — they can intercept (see later)
+      handleExtraCommand(text) || handleCommand(text);
+      cmdInput.value='';
+    });
+
+    cmdInput.addEventListener('keydown', (e)=> { if(e.key==='Enter') btnSend.click(); });
+
+    function stopListening(){
+      if(recognition){
+        try { recognition.stop(); } catch(e){}
+        listening = false;
+        listenStatus.textContent = 'Idle';
+        log('Stopped listening');
+      }
     }
 
-    // 9. jokes
-    if(lower.includes('joke')) {
-      const j = jokes[Math.floor(Math.random()*jokes.length)];
-      speak(j);
-      addTranscriptEntry('Joke: ' + j);
-      return;
+    // current user name (from input) [kept for compatibility]
+    function currentUserName(){
+      const n = document.getElementById('username');
+      return n ? (n.value || '') : '';
     }
 
-    // 10. utility: open site <url>
-    const openMatch = lower.match(/^open (https?:\/\/\S+|\S+\.\S{2,})$/);
-    if(openMatch) {
-      const target = openMatch[1].startsWith('http') ? openMatch[1] : 'https://' + openMatch[1];
-      speak('Opening ' + target);
-      window.open(target, '_blank');
-      return;
-    }
-
-    // 11. stop / exit listening
-    if(lower.includes('stop listening') || lower.includes('stop') || lower.includes('exit')) {
-      speak('Stopping voice recognition');
-      stopListening();
-      return;
-    }
-
-    // 12. help / list commands
-    if(lower.includes('help') || lower.includes('commands')) {
-      const msg = 'You can say: time, date, open youtube, search cats, wiki Tesla, calculate 12 plus 7, set timer 10 seconds, play music, tell me a joke';
-      speak(msg);
-      addTranscriptEntry('Help shown');
-      return;
-    }
-// ✅ Extra: Physics Wallah app / site
-    if(lower.includes("open pw") || lower.includes("physics wallah") || lower.includes("play pw")){
-      speak("Opening Physics Wallah for you");
-      // Try opening app via intent
-      window.location.href = "intent://#Intent;package=in.eduwall.pwclassroom;scheme=pw;end";
-      // Fallback → website
-      setTimeout(() => {
-        window.open("https://www.pw.live/", "_blank");
-      }, 1000);
-      return;
-    }
-    // fallback: ask to search
-    speak('I did not understand. Do you want me to search the web for ' + text + '?');
-    if(confirm('Search web for "' + text + '"?')) {
-      window.open('https://www.google.com/search?q=' + encodeURIComponent(text), '_blank');
-    }
-  }
-
-  // Add transcript entry area (left)
-  function addTranscriptEntry(txt, type='sys'){
-    const p = document.createElement('div');
-    p.style.marginTop = '8px';
-    p.style.fontSize = '14px';
-    p.style.color = (type==='err' ? '#ffb3b3' : '#dbeafe');
-    p.textContent = txt;
-    transcriptEl.appendChild(p);
-    // scroll transcript into view
-    transcriptEl.scrollTop = transcriptEl.scrollHeight;
-  }
-
-  // Controls events
-  btnStart.addEventListener('click', () => {
-    if(!recognition) setupRecognition();
-    if(recognition && !listening){
-      try { recognition.start(); } catch(e){ console.warn(e); }
-    }
-  });
-  btnStop.addEventListener('click', stopListening);
-
-  btnWake.addEventListener('click', ()=> {
-    wakeWordOn = !wakeWordOn;
-    wakeStateSpan.textContent = wakeWordOn ? 'On' : 'Off';
-    log('Wake-word ' + (wakeWordOn ? 'enabled' : 'disabled'));
-  });
-
-  btnToggleVoice.addEventListener('click', ()=> {
-    chkVoice.checked = !chkVoice.checked;
-    log('Voice reply ' + (chkVoice.checked ? 'enabled' : 'disabled'));
-  });
-
-  btnClearLog.addEventListener('click', ()=> { logEl.innerHTML=''; transcriptEl.innerHTML=''; });
-
-  chkContinuous.addEventListener('change', ()=>{
-    if(recognition){
-      recognition.stop();
-      recognition = null;
+    // initial setup
+    function init(){
+      transcriptEl.textContent = 'Press Start Listening and speak. You can also type commands below.';
+      lang = langSelect.value;
       setupRecognition();
-    }
-    log('Continuous: ' + chkContinuous.checked);
-  });
-
-  langSelect.addEventListener('change', ()=> {
-    lang = langSelect.value;
-    langLabel.textContent = (lang==='hi-IN' ? 'Hindi (hi-IN)' : 'English (en-US)');
-    if(recognition){
-      recognition.lang = lang;
-    }
-    log('Language set to ' + lang);
-  });
-
-  btnSend.addEventListener('click', ()=> {
-    const text = cmdInput.value.trim();
-    if(!text) return;
-    handleCommand(text);
-    cmdInput.value='';
-  });
-
-  cmdInput.addEventListener('keydown', (e)=> { if(e.key==='Enter') btnSend.click(); });
-
-  function stopListening(){
-    if(recognition){
-      try { recognition.stop(); } catch(e){}
-      listening = false;
-      listenStatus.textContent = 'Idle';
-      log('Stopped listening');
-    }
-  }
-
-  // current user name (from input)
-  function currentUserName(){
-    const n = document.getElementById('username');
-    return n ? (n.value || '') : '';
-  }
-
-  // initial setup
-  function init(){
-    transcriptEl.textContent = 'Press Start Listening and speak. You can also type commands below.';
-    lang = langSelect.value;
-    // prepare recognition but don't start
-    setupRecognition();
-    log('Assistant ready');
-  }
-
-  init();
-
-})();
-</script>
-
-<!-- ===================== ADD-ONS START (No changes above) ===================== -->
-<style>
-  /* Overlays & widgets for special features */
-  #powerOverlay, #flashlightOverlay, #lockOverlay, #cameraOverlay {
-    position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 9999;
-  }
-  #powerOverlay { background: #000; color:#fff; flex-direction: column; gap:18px; }
-  #powerLogo { font-size: 26px; letter-spacing: 6px; opacity: 0; animation: fadeIn 1.2s ease forwards 0.4s }
-  #powerSpinner { width:48px;height:48px;border-radius:50%; border:4px solid rgba(255,255,255,0.2); border-top-color:#fff; animation: spin 1s linear infinite}
-  #restartText { font-size:13px; opacity:0.8 }
-  @keyframes spin { to{ transform: rotate(360deg);} }
-  @keyframes fadeIn { to{ opacity: 1} }
-
-  #flashlightOverlay{ background:#fff }
-  #lockOverlay { background: rgba(0,0,0,0.9); color:#dbeafe; flex-direction:column; gap:14px; text-align:center; }
-  #lockOverlay .btn { padding:10px 14px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:rgba(255,255,255,0.06); color:#fff; cursor:pointer }
-
-  /* Camera overlay */
-  #cameraOverlay { background: rgba(0,0,0,0.94); color:#fff; flex-direction: column; gap:10px; }
-  #cameraView { width:min(92vw,720px); height: min(65vh,480px); background:#000; border-radius:12px; overflow:hidden }
-  #cameraView video{ width:100%; height:100%; object-fit:cover }
-  .overlayTopBar{
-    position: fixed; top:14px; left:50%; transform: translateX(-50%);
-    display:flex; gap:8px; align-items:center; background:rgba(255,255,255,0.06);
-    padding:8px 12px; border:1px solid rgba(255,255,255,0.16); border-radius:999px; z-index:10000; color:#fff
-  }
-  .overlayTopBar button{ background:transparent; border:1px solid rgba(255,255,255,0.25); color:#fff; padding:8px 10px; border-radius:999px; cursor:pointer }
-
-  /* Utility dock */
-  .utility-dock{
-    max-width:980px; margin: 10px auto 24px; padding:12px;
-    display:grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap:10px;
-  }
-  .util{ background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); color:#e6eef8; padding:12px; border-radius:12px; text-align:center; font-size:14px; cursor:pointer }
-  .util small{ display:block; color:#94a3b8; font-size:12px; margin-top:4px }
-
-  /* Badge line under footer */
-  .badge-line{ text-align:center; color:#94a3b8; font-size:12px; margin-bottom:18px }
-</style>
-
-<!-- Quick utility dock (added, optional UI) -->
-<div class="utility-dock">
-  <div class="util" data-cmd="power off phone">Power Off<small>voice: power off phone</small></div>
-  <div class="util" data-cmd="restart phone">Restart<small>voice: restart phone</small></div>
-  <div class="util" data-cmd="flashlight on">Flashlight On<small>torch on</small></div>
-  <div class="util" data-cmd="flashlight off">Flashlight Off</div>
-  <div class="util" data-cmd="open camera">Open Camera</div>
-  <div class="util" data-cmd="close camera">Close Camera</div>
-  <div class="util" data-cmd="open whatsapp">Open WhatsApp</div>
-  <div class="util" data-cmd="open gallery">Open Gallery</div>
-  <div class="util" data-cmd="battery status">Battery Status</div>
-  <div class="util" data-cmd="device info">Device Info</div>
-  <div class="util" data-cmd="keep screen on">Keep Screen On</div>
-  <div class="util" data-cmd="allow sleep">Allow Sleep</div>
-  <div class="util" data-cmd="vibrate">Vibrate</div>
-  <div class="util" data-cmd="lock screen">Lock Screen</div>
-  <div class="util" data-cmd="unlock screen">Unlock Screen</div>
-</div>
-
-<!-- Overlays -->
-<div id="powerOverlay">
-  <div id="powerSpinner"></div>
-  <div id="powerLogo">S H U T T I N G &nbsp; D O W N</div>
-  <div id="restartText"></div>
-</div>
-
-<div id="flashlightOverlay"></div>
-
-<div id="lockOverlay">
-  <div style="font-size:28px; letter-spacing:2px">🔒 Screen Locked</div>
-  <div>Say <b>"unlock screen"</b> or press the button below</div>
-  <button class="btn" id="unlockBtn">Unlock</button>
-</div>
-
-<div id="cameraOverlay">
-  <div class="overlayTopBar">
-    <button id="btnCloseCamera">Close</button>
-    <button id="btnSwitchCamera">Switch</button>
-  </div>
-  <div id="cameraView"><video id="camVideo" autoplay playsinline muted></video></div>
-</div>
-
-<div class="badge-line">Extra features added By Rudransh ultra level minds originated.</div>
-
-<script id="addons">
-/* ==========================================================
-   ADD-ON FEATURES (No changes to original code above)
-   - Typed commands intercepted before original handler
-   - Voice commands detected by observing transcript "User: ..."
-   ========================================================== */
-
-(function(){
-  const transcriptEl = document.getElementById('transcript');
-  const btnSend = document.getElementById('btnSend');
-  const cmdInput = document.getElementById('cmdInput');
-  const logEl = document.getElementById('log');
-
-  // Overlays & elements
-  const powerOverlay = document.getElementById('powerOverlay');
-  const restartText = document.getElementById('restartText');
-  const flashlightOverlay = document.getElementById('flashlightOverlay');
-  const lockOverlay = document.getElementById('lockOverlay');
-  const unlockBtn = document.getElementById('unlockBtn');
-  const cameraOverlay = document.getElementById('cameraOverlay');
-  const camVideo = document.getElementById('camVideo');
-  const btnCloseCamera = document.getElementById('btnCloseCamera');
-  const btnSwitchCamera = document.getElementById('btnSwitchCamera');
-
-  let wakeLock = null;
-  let camStream = null;
-  let usingBackCam = true;
-
-  function addLog(msg){
-    const time = new Date().toLocaleTimeString();
-    const div = document.createElement('div');
-    div.innerHTML = `<strong style="color:#9ae6b4">${time}</strong> — <span style="color:#bfe1ff">${escapeHtml(msg)}</span>`;
-    logEl.prepend(div);
-  }
-  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
-  // ---------- Feature actions ----------
-  function powerOffAnimation(){
-    powerOverlay.style.display = 'flex';
-    restartText.textContent = '';
-    // fade to black feel is already here; auto hide to simulate "powered off"
-    setTimeout(()=> { document.body.style.filter='brightness(0)'; }, 600);
-  }
-  function restartAnimation(){
-    powerOverlay.style.display = 'flex';
-    restartText.textContent = 'Restarting...';
-    document.body.style.filter='';
-    setTimeout(()=> { document.body.style.filter='brightness(0)'; }, 600);
-    // "boot up" after 3s
-    setTimeout(()=> {
-      document.body.style.filter='';
-      powerOverlay.style.display='none';
-    }, 3200);
-  }
-
-  function flashlight(on){
-    flashlightOverlay.style.display = on ? 'flex' : 'none';
-  }
-
-  async function openCamera(){
-    try{
-      cameraOverlay.style.display='flex';
-      if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
-      camStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: usingBackCam ? {ideal:'environment'} : 'user' },
-        audio: false
+      log('Assistant ready (enhanced)');
+      // attach quick cmd clicks
+      document.querySelectorAll('.cmd').forEach(c=>{
+        c.addEventListener('click', ()=> { const cmd = c.getAttribute('data-cmd'); handleExtraCommand(cmd) || handleCommand(cmd); });
       });
-      camVideo.srcObject = camStream;
-      addLog('Camera opened');
-    }catch(e){
-      addLog('Camera error: ' + e.message);
-      alert('Camera permission or device error.');
     }
-  }
-  function closeCamera(){
-    cameraOverlay.style.display='none';
-    if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
-    addLog('Camera closed');
-  }
-  btnCloseCamera.addEventListener('click', closeCamera);
-  btnSwitchCamera.addEventListener('click', async ()=>{
-    usingBackCam = !usingBackCam;
-    await openCamera();
-  });
 
-  async function batteryStatus(){
-    try{
-      if(!('getBattery' in navigator)){ alert('Battery API not supported'); return; }
-      const b = await navigator.getBattery();
-      const pct = Math.round(b.level*100);
-      const ch = b.charging ? 'charging' : 'not charging';
-      alert(`Battery: ${pct}% (${ch})`);
-      addLog(`Battery status: ${pct}% (${ch})`);
-    }catch(e){ addLog('Battery error: '+e.message); }
-  }
+    init();
 
-  function deviceInfo(){
-    const ua = navigator.userAgent;
-    const plat = navigator.platform;
-    const lang = navigator.language;
-    const info = `UA: ${ua}\nPlatform: ${plat}\nLanguage: ${lang}`;
-    alert(info);
-    addLog('Device info shown');
-  }
+    // --------------- Extra features: utilities, camera, flashlight, restart, power off, battery, screenshot, news, weather, spotify, translation, games, memory UI ---------------
 
-  async function keepScreenOn(){
-    try{
-      if('wakeLock' in navigator){
-        wakeLock = await navigator.wakeLock.request('screen');
-        addLog('Wake Lock active (screen on)');
-        window.addEventListener('visibilitychange', async ()=>{
-          if(document.visibilityState === 'visible' && wakeLock === null){
-            try{ wakeLock = await navigator.wakeLock.request('screen'); }catch(_){}
+    // Utility dock click -> command
+    document.querySelectorAll('.util').forEach(card=>{
+      card.addEventListener('click', ()=>{
+        const c = card.getAttribute('data-cmd');
+        handleExtraCommand(c);
+      });
+    });
+
+    // EXTRA: button-driven actions
+    btnWeather.addEventListener('click', ()=> { handleExtraCommand('weather'); });
+    btnNews.addEventListener('click', ()=> { handleExtraCommand('news'); });
+    btnQuote.addEventListener('click', ()=> { handleExtraCommand('motivate'); });
+    btnSpotify.addEventListener('click', ()=> { handleExtraCommand('play spotify'); });
+    btnTranslate.addEventListener('click', ()=> {
+      const phrase = prompt('Phrase to translate (will open Google Translate):');
+      if(phrase) window.open('https://translate.google.com/?sl=auto&tl=en&text=' + encodeURIComponent(phrase) + '&op=translate', '_blank');
+    });
+    btnScreenshot.addEventListener('click', takeScreenshot);
+    btnSelfDestruct.addEventListener('click', ()=> { runSelfDestruct(); });
+
+    btnRPS.addEventListener('click', ()=> { playRPS(); });
+    btnGuess.addEventListener('click', ()=> { playGuess(); });
+
+    // memory buttons
+    btnSaveMemory.addEventListener('click', ()=>{
+      const txt = prompt('What should I remember?');
+      if(txt){
+        const mems = JSON.parse(localStorage.getItem('siri_mems')||'[]');
+        mems.push({text:txt, time: Date.now()});
+        localStorage.setItem('siri_mems', JSON.stringify(mems));
+        speak('Saved that memory.');
+        log('Memory saved: ' + txt);
+      }
+    });
+    btnShowMemory.addEventListener('click', showMemories);
+
+    function showMemories(){
+      const mems = JSON.parse(localStorage.getItem('siri_mems')||'[]');
+      if(mems.length===0){ alert('No memories saved.'); return; }
+      const list = mems.map((m,i)=> (i+1)+'. '+m.text + ' ('+ new Date(m.time).toLocaleString() +')').join('\n\n');
+      alert('Memories:\n\n' + list);
+    }
+
+    // CAMERA & flashlight
+    async function openCamera(){
+      try{
+        cameraOverlay.style.display='flex';
+        if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+        camStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: usingBackCam ? {ideal:'environment'} : 'user' },
+          audio: false
+        });
+        camVideo.srcObject = camStream;
+        log('Camera opened');
+      }catch(e){
+        log('Camera error: ' + e.message, 'err');
+        alert('Camera permission or device error.');
+      }
+    }
+    function closeCamera(){
+      cameraOverlay.style.display='none';
+      if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+      log('Camera closed');
+    }
+    btnCloseCamera.addEventListener('click', closeCamera);
+    btnSwitchCamera.addEventListener('click', async ()=>{
+      usingBackCam = !usingBackCam;
+      await openCamera();
+    });
+
+    function flashlight(on){
+      // emulate flashlight by full-screen white overlay
+      flashlightOverlay.style.display = on ? 'flex' : 'none';
+      if(on) flashlightOverlay.style.background = '#ffffff';
+      else flashlightOverlay.style.background = 'transparent';
+      log('Flashlight ' + (on ? 'on' : 'off'));
+    }
+
+    // battery status
+    async function batteryStatus(){
+      try{
+        if(!('getBattery' in navigator)){ alert('Battery API not supported'); return; }
+        const b = await navigator.getBattery();
+        const pct = Math.round(b.level*100);
+        const ch = b.charging ? 'charging' : 'not charging';
+        alert(`Battery: ${pct}% (${ch})`);
+        log(`Battery status: ${pct}% (${ch})`);
+      }catch(e){ log('Battery error: '+e.message, 'err'); }
+    }
+
+    function deviceInfo(){
+      const ua = navigator.userAgent;
+      const plat = navigator.platform;
+      const lang = navigator.language;
+      const info = `UA: ${ua}\nPlatform: ${plat}\nLanguage: ${lang}`;
+      alert(info);
+      log('Device info shown');
+    }
+
+    // wake lock (keep screen on)
+    let wakeLock = null;
+    async function keepScreenOn(){
+      try{
+        if('wakeLock' in navigator){
+          wakeLock = await navigator.wakeLock.request('screen');
+          log('Wake Lock active (screen on)');
+          window.addEventListener('visibilitychange', async ()=>{
+            if(document.visibilityState === 'visible' && wakeLock === null){
+              try{ wakeLock = await navigator.wakeLock.request('screen'); }catch(_){}
+            }
+          });
+        } else {
+          alert('Wake Lock API not supported in this browser');
+        }
+      }catch(e){ log('Wake Lock error: '+e.message); }
+    }
+    function allowSleep(){
+      if(wakeLock){ try{ wakeLock.release(); }catch(_){} wakeLock=null; log('Wake Lock released'); }
+    }
+
+    // vibrate
+    function vibrate(){
+      if('vibrate' in navigator){
+        navigator.vibrate([60,40,60,40,120]);
+        log('Vibration pattern played');
+      } else {
+        alert('Vibration not supported on this device');
+      }
+    }
+
+    // lock/unlock screen (UI only)
+    function lockScreen(){
+      lockOverlay.style.display='flex';
+      log('Screen locked (UI)');
+    }
+    function unlockScreen(){
+      lockOverlay.style.display='none';
+      log('Screen unlocked (UI)');
+    }
+    unlockBtn.addEventListener('click', unlockScreen);
+
+    // open whatsapp
+    function openWhatsApp(){
+      try{
+        window.location.href = "intent://send/#Intent;scheme=whatsapp;package=com.whatsapp;end";
+        setTimeout(()=>window.open('https://web.whatsapp.com', '_blank'), 800);
+      }catch(_){
+        window.open('https://web.whatsapp.com', '_blank');
+      }
+      log('WhatsApp request');
+    }
+    function openGallery(){
+      window.open('https://photos.google.com', '_blank');
+      log('Gallery opened');
+    }
+
+    // Power off / restart (UI simulation)
+    function powerOffAnimation(){
+      powerOverlay.style.display = 'flex';
+      restartText.textContent = 'Powering off...';
+      setTimeout(()=> { document.body.style.filter='brightness(0)'; }, 600);
+      log('Simulated power off');
+    }
+    function restartAnimation(){
+      powerOverlay.style.display = 'flex';
+      restartText.textContent = 'Restarting...';
+      setTimeout(()=> { document.body.style.filter='brightness(0)'; }, 600);
+      setTimeout(()=> {
+        document.body.style.filter='';
+        powerOverlay.style.display='none';
+        log('Simulated restart finished');
+      }, 3200);
+      log('Simulated restart');
+    }
+
+    // Screenshot using html2canvas (load dynamically)
+    async function takeScreenshot(){
+      // try to dynamically load html2canvas if not available
+      if(typeof html2canvas === 'undefined'){
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+      }
+      try{
+        speak('Taking screenshot');
+        const node = document.documentElement;
+        const canvas = await html2canvas(node, { logging:false, useCORS:true, scale:1 });
+        const url = canvas.toDataURL('image/png');
+        const a = document.createElement('a');
+        a.href = url; a.download = 'screenshot.png'; document.body.appendChild(a); a.click(); a.remove();
+        log('Screenshot taken & downloaded');
+      }catch(e){ log('Screenshot failed: '+ e.message, 'err'); alert('Screenshot failed: ' + e.message); }
+    }
+
+    // News - open Google News search
+    function openNews(){
+      speak('Opening top news');
+      window.open('https://news.google.com/topstories?hl=en-US&gl=US&ceid=US:en', '_blank');
+    }
+
+    // Self destruct effect using canvas animation
+    function runSelfDestruct(){
+      const c = boomCanvas;
+      c.width = window.innerWidth; c.height = window.innerHeight; c.style.display='block';
+      const ctx = c.getContext('2d');
+      const particles = [];
+      for(let i=0;i<120;i++){
+        particles.push({
+          x: Math.random()*c.width,
+          y: Math.random()*c.height,
+          vx: (Math.random()-0.5)*8,
+          vy: (Math.random()-0.5)*8,
+          r: Math.random()*4+2,
+          life: Math.random()*80+40
+        });
+      }
+      let t=0;
+      speak('Self destruct in 3... 2... 1...');
+      const id = setInterval(()=>{
+        ctx.fillStyle = 'rgba(0,0,0,0.12)';
+        ctx.fillRect(0,0,c.width,c.height);
+        particles.forEach(p=>{
+          p.x += p.vx; p.y += p.vy; p.life--;
+          ctx.beginPath();
+          ctx.fillStyle = 'rgba(255,'+Math.floor(50+Math.random()*200)+',0,'+ (p.life/120) +')';
+          ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+        });
+        t++;
+        if(t>140){ clearInterval(id); ctx.clearRect(0,0,c.width,c.height); c.style.display='none'; log('Self-destruct animation done'); }
+      }, 16);
+    }
+
+    // quick games
+    function playRPS(){
+      const choices = ['rock','paper','scissors'];
+      const user = prompt('Choose rock, paper or scissors:');
+      if(!user) return;
+      const u = user.toLowerCase();
+      if(!choices.includes(u)){ alert('Invalid choice'); return; }
+      const bot = choices[Math.floor(Math.random()*3)];
+      let res='Draw';
+      if((u==='rock'&&bot==='scissors')||(u==='paper'&&bot==='rock')||(u==='scissors'&&bot==='paper')) res='You win!';
+      else if(u===bot) res='Draw';
+      else res='You lose!';
+      speak(`You chose ${u}. I chose ${bot}. ${res}`);
+      alert(`You: ${u}\nSiri: ${bot}\n\n${res}`);
+    }
+    function playGuess(){
+      const target = Math.floor(Math.random()*50)+1;
+      let tries=0; let ok=false;
+      while(tries<7){
+        const g = prompt('Guess the number (1-50). Attempts left: ' + (7-tries));
+        if(g===null) return;
+        const n = parseInt(g,10);
+        if(isNaN(n)){ alert('Enter a number'); continue; }
+        tries++;
+        if(n===target){ speak('Correct!'); alert('Correct! The number was '+target); ok=true; break; }
+        else if(n<target){ speak('Higher'); alert('Higher'); }
+        else { speak('Lower'); alert('Lower'); }
+      }
+      if(!ok) { speak('Out of attempts. The number was ' + target); alert('Out of attempts. The number was ' + target); }
+    }
+
+    // small helper to dynamically load script
+    function loadScript(src){
+      return new Promise((res, rej)=>{
+        const s = document.createElement('script');
+        s.src = src; s.onload = ()=>res(); s.onerror = ()=>rej(new Error('Failed to load ' + src));
+        document.head.appendChild(s);
+      });
+    }
+
+    // EXTRA: handle extra commands BEFORE main handler (typed & observed voice lines)
+    function handleExtraCommand(raw){
+      if(!raw) return false;
+      const lower = raw.toLowerCase().trim();
+
+      // direct map
+      if(/^(power\s*off( phone)?|shutdown( phone)?)$/.test(lower)){ powerOffAnimation(); return true; }
+      if(/^(restart( phone)?|reboot( phone)?)$/.test(lower)){ restartAnimation(); return true; }
+      if(/^(flashlight|torch) on$/.test(lower)){ flashlight(true); return true; }
+      if(/^(flashlight|torch) off$/.test(lower)){ flashlight(false); return true; }
+      if(/^open camera$/.test(lower)){ openCamera(); return true; }
+      if(/^close camera$/.test(lower)){ closeCamera(); return true; }
+      if(/^open whatsapp$/.test(lower)){ openWhatsApp(); return true; }
+      if(/^open gallery$/.test(lower)){ openGallery(); return true; }
+      if(/^battery status$/.test(lower)){ batteryStatus(); return true; }
+      if(/^device info$/.test(lower)){ deviceInfo(); return true; }
+      if(/^keep screen on$/.test(lower)){ keepScreenOn(); return true; }
+      if(/^allow sleep$/.test(lower)){ allowSleep(); return true; }
+      if(/^vibrate$/.test(lower)){ vibrate(); return true; }
+      if(/^lock screen$/.test(lower)){ lockScreen(); return true; }
+      if(/^unlock screen$/.test(lower)){ unlockScreen(); return true; }
+      if(/^news$/.test(lower)){ openNews(); return true; }
+      if(/^weather$/.test(lower)){ window.open('https://wttr.in/?format=3', '_blank'); return true; }
+      if(/^play spotify$/.test(lower)){ window.open('https://open.spotify.com/collection/playlists', '_blank'); return true; }
+      if(/^screenshot$/.test(lower)){ takeScreenshot(); return true; }
+      if(/^motivate$/.test(lower)){ const q = quotes[Math.floor(Math.random()*quotes.length)]; speak(q); return true; }
+      if(/^self destruct$/.test(lower)){ runSelfDestruct(); return true; }
+      if(/^play music$/.test(lower)){ window.open('https://www.youtube.com/results?search_query=lofi+beats', '_blank'); return true; }
+      // quick open
+      if(lower.startsWith('open ')){
+        // allow opening certain sites
+        const tgt = lower.replace(/^open\s+/, '').trim();
+        if(tgt==='pw' || tgt.includes('physics')){ window.open('https://www.pw.live/', '_blank'); return true; }
+      }
+
+      return false;
+    }
+
+    // Observe transcript UI nodes to catch voice "User: ..." entries (so addons work for voice)
+    const seen = new Set();
+    const observer = new MutationObserver((muts)=>{
+      muts.forEach(m=>{
+        m.addedNodes && Array.from(m.addedNodes).forEach(node=>{
+          if(node && node.textContent && node.textContent.startsWith('User: ')){
+            const cmd = node.textContent.slice(6).trim();
+            if(!seen.has(cmd)){
+              seen.add(cmd);
+              // first try extras
+              if(!handleExtraCommand(cmd)) {
+                // if not intercepted, main handler will process anyway via recognition->onresult; this prevents double-run
+              }
+            }
           }
         });
-      } else {
-        alert('Wake Lock API not supported in this browser');
-      }
-    }catch(e){ addLog('Wake Lock error: '+e.message); }
-  }
-  function allowSleep(){
-    if(wakeLock){ try{ wakeLock.release(); }catch(_){} wakeLock=null; addLog('Wake Lock released'); }
-  }
-
-  function vibrate(){
-    if('vibrate' in navigator){
-      navigator.vibrate([60,40,60,40,120]);
-      addLog('Vibration pattern played');
-    } else {
-      alert('Vibration not supported on this device');
-    }
-  }
-
-  function lockScreen(){
-    lockOverlay.style.display='flex';
-  }
-  function unlockScreen(){
-    lockOverlay.style.display='none';
-  }
-  unlockBtn.addEventListener('click', unlockScreen);
-
-  function openWhatsApp(){
-    try{
-      window.location.href = "intent://send/#Intent;scheme=whatsapp;package=com.whatsapp;end";
-      setTimeout(()=>window.open('https://web.whatsapp.com', '_blank'), 800);
-    }catch(_){
-      window.open('https://web.whatsapp.com', '_blank');
-    }
-    addLog('WhatsApp request');
-  }
-
-  function openGallery(){
-    window.open('https://photos.google.com', '_blank');
-    addLog('Gallery opened');
-  }
-
-  // ---------- Command router ----------
-  function handleExtraCommand(raw){
-    if(!raw) return false;
-    const lower = raw.toLowerCase().trim();
-
-    // map variants
-    if(/^(power\s*off( phone)?|shutdown( phone)?)$/.test(lower)){ powerOffAnimation(); return true; }
-    if(/^(restart( phone)?|reboot( phone)?)$/.test(lower)){ restartAnimation(); return true; }
-
-    if(/^(flashlight|torch) on$/.test(lower)){ flashlight(true); return true; }
-    if(/^(flashlight|torch) off$/.test(lower)){ flashlight(false); return true; }
-
-    if(/^open camera$/.test(lower)){ openCamera(); return true; }
-    if(/^close camera$/.test(lower)){ closeCamera(); return true; }
-
-    if(/^open whatsapp$/.test(lower)){ openWhatsApp(); return true; }
-    if(/^open gallery$/.test(lower)){ openGallery(); return true; }
-
-    if(/^battery status$/.test(lower)){ batteryStatus(); return true; }
-    if(/^device info$/.test(lower)){ deviceInfo(); return true; }
-
-    if(/^keep screen on$/.test(lower)){ keepScreenOn(); return true; }
-    if(/^allow sleep$/.test(lower)){ allowSleep(); return true; }
-
-    if(/^vibrate$/.test(lower)){ vibrate(); return true; }
-
-    if(/^lock screen$/.test(lower)){ lockScreen(); return true; }
-    if(/^unlock screen$/.test(lower)){ unlockScreen(); return true; }
-
-    return false;
-  }
-
-  // 1) Intercept typed commands BEFORE original handler (capture phase)
-  btnSend.addEventListener('click', function(e){
-    const val = (cmdInput && cmdInput.value || '').trim();
-    if(handleExtraCommand(val)){
-      // clear to prevent original handler from acting
-      if(cmdInput) cmdInput.value = '';
-      e.stopImmediatePropagation();
-      e.preventDefault();
-    }
-  }, true);
-  cmdInput.addEventListener('keydown', function(e){
-    if(e.key==='Enter'){
-      const val = (cmdInput && cmdInput.value || '').trim();
-      if(handleExtraCommand(val)){
-        if(cmdInput) cmdInput.value = '';
-        e.stopImmediatePropagation();
-        e.preventDefault();
-      }
-    }
-  }, true);
-
-  // 2) Observe transcript for "User: ..." lines produced by original code (voice path)
-  const seen = new Set();
-  const observer = new MutationObserver((muts)=>{
-    muts.forEach(m=>{
-      m.addedNodes && Array.from(m.addedNodes).forEach(node=>{
-        if(node && node.textContent && node.textContent.startsWith('User: ')){
-          const cmd = node.textContent.slice(6).trim();
-          if(!seen.has(cmd)){
-            seen.add(cmd);
-            handleExtraCommand(cmd);
-          }
-        }
       });
     });
-  });
-  if(transcriptEl){
-    observer.observe(transcriptEl, { childList:true });
-  }
+    if(transcriptEl){
+      observer.observe(transcriptEl, { childList:true });
+    }
 
-  // 3) Utility dock click → run commands
-  document.querySelectorAll('.util').forEach(card=>{
-    card.addEventListener('click', ()=>{
-      const c = card.getAttribute('data-cmd');
-      handleExtraCommand(c);
+    // quick actions: listen for utility clicks (already bound earlier)
+    // For clickable utility-dock cards we already bound above
+
+    // expose some functions for console debugging
+    window.SiriEnh = {
+      speak, takeScreenshot, openCamera, closeCamera, flashlight, restartAnimation, powerOffAnimation, openNews, keepScreenOn, allowSleep, showMemories
+    };
+
+    // End main IIFE
+  })();
+  </script>
+
+  <!-- tiny helper for user (no change to original main behavior) -->
+  <script>
+    // Bind util card clicks to the underlying extra command router (for convenience)
+    document.querySelectorAll('.util').forEach(card=>{
+      card.addEventListener('click', ()=>{
+        const c = card.getAttribute('data-cmd');
+        // find global handler from SiriEnh or call via dispatch
+        // try to trigger custom logic by dispatching a typed command into cmdInput
+        const input = document.getElementById('cmdInput');
+        input.value = c;
+        document.getElementById('btnSend').click();
+      });
     });
-  });
+  </script>
 
-})();
-</script>
-<!-- ===================== ADD-ONS END ===================== -->
+  <!-- html2canvas is loaded on demand by the screenshot routine -->
 </body>
 </html>
